@@ -135,10 +135,13 @@ class Payment(Base):
     amount_paise: Mapped[int] = mapped_column(BigInteger)
     state: Mapped[str] = mapped_column(String(32), index=True)
     note: Mapped[str | None] = mapped_column(String(200))
+    failure_reason: Mapped[str | None] = mapped_column(String(300))  # plain-language reason
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # simulated time
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # simulated time
 
+    payer_account: Mapped[Account] = relationship(foreign_keys=[payer_account_id])
+    payee_account: Mapped[Account] = relationship(foreign_keys=[payee_account_id])
     events: Mapped[list["PaymentEvent"]] = relationship(
         back_populates="payment", order_by="PaymentEvent.id"
     )

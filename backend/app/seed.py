@@ -5,64 +5,23 @@ DEMO_PASSWORD — fine for a local simulation, never for anything real.
 """
 
 import asyncio
-import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import payments
 from app.db import SessionLocal
-from app.models import (
-    Account,
-    AccountKind,
-    Bank,
-    BankProfile,
-    LedgerEntry,
-    SimClock,
-    User,
-    UserRole,
-)
+from app.ledger import OPENING_BALANCE_VPA, SUSPENSE_VPA, lock_accounts, post_transfer
+from app.models import Account, AccountKind, Bank, BankProfile, SimClock, User, UserRole
 from app.security import hash_password
 
 DEMO_PASSWORD = "demo1234"
-OPENING_BALANCE_VPA = "opening.balance@tracepay"
 
 
 def rupees(amount: int) -> int:
     """Convert whole rupees to paise, so seed values read naturally."""
     return amount * 100
-
-
-def _post_opening_balance(
-    db: AsyncSession, source: Account, target: Account, amount_paise: int, now: datetime
-) -> None:
-    """Give an account its starting money *through the ledger*.
-
-    The money comes from a system account that goes negative by the same amount, so the
-    ledger sums to zero from the very first row. (The full ledger service with row locking
-    arrives in Phase 2; the seed runs alone, so it can write the two legs directly.)
-    """
-    txn_id = uuid.uuid4()
-    db.add_all(
-        [
-            LedgerEntry(
-                txn_id=txn_id,
-                account_id=source.id,
-                amount_paise=-amount_paise,
-                description=f"Opening balance for {target.vpa}",
-                created_at=now,
-            ),
-            LedgerEntry(
-                txn_id=txn_id,
-                account_id=target.id,
-                amount_paise=amount_paise,
-                description="Opening balance",
-                created_at=now,
-            ),
-        ]
-    )
-    source.balance_paise -= amount_paise
-    target.balance_paise += amount_paise
 
 
 async def seed_demo_data(db: AsyncSession) -> bool:
@@ -125,9 +84,11 @@ async def seed_demo_data(db: AsyncSession) -> bool:
         db.add(acc)
         return acc
 
+    # System accounts that keep the ledger balanced (see ledger.py).
     opening = account(
         None, suraksha, OPENING_BALANCE_VPA, "Opening balances (system)", AccountKind.SYSTEM
     )
+    account(None, suraksha, SUSPENSE_VPA, "Settlement suspense (system)", AccountKind.SYSTEM)
     # Aarav banks with the flaky bank, so the demo's "bank dies mid-flight" story is natural.
     aarav_acc = account(aarav, jhatpat, "aarav@jhatpat", "Aarav Mehta", AccountKind.USER)
     shanti_acc = account(shanti, suraksha, "shanti@suraksha", "Shanti Mehta", AccountKind.USER)
@@ -142,15 +103,63 @@ async def seed_demo_data(db: AsyncSession) -> bool:
     account(None, jhatpat, "campuschai@jhatpat", "Campus Chai Point", AccountKind.MERCHANT)
     await db.flush()
 
+    # Opening balances go through the real ledger code: the money comes from a system
+    # account, so the ledger sums to zero from the very first row. The amounts are chosen
+    # so that after the past payments below, balances land on round demo figures
+    # (Aarav ₹8,450, Shanti ₹2,15,000, Ravi ₹46,320).
     for acc, amount in [
-        (aarav_acc, rupees(8_450)),
-        (shanti_acc, rupees(2_15_000)),
-        (ravi_acc, rupees(46_320)),
+        (aarav_acc, rupees(6_840)),
+        (shanti_acc, rupees(2_18_240)),
+        (ravi_acc, rupees(45_970)),
     ]:
-        _post_opening_balance(db, opening, acc, amount, now)
+        locked = await lock_accounts(db, [opening.id, acc.id])
+        post_transfer(
+            db,
+            from_account=locked[opening.id],
+            to_account=locked[acc.id],
+            amount_paise=amount,
+            at=now - timedelta(days=30),
+            description="Opening balance",
+        )
+
+    await _seed_past_payments(db, now, aarav, shanti)
 
     await db.commit()
     return True
+
+
+async def _seed_past_payments(db: AsyncSession, now: datetime, aarav: User, shanti: User) -> None:
+    """A little history, created with the same service code the API uses."""
+
+    async def paid(user: User, payee: str, amount: int, note: str, days_ago: float) -> None:
+        at = now - timedelta(days=days_ago)
+        p = await payments.accept_payment(
+            db, payer_user_id=user.id, payee_vpa=payee, amount_paise=amount, note=note, at=at
+        )
+        await payments.send_to_switch(db, p.id, at + timedelta(seconds=2))
+        await payments.credit_payee(db, p.id, at + timedelta(seconds=4))
+
+    await paid(shanti, "gridpower@jhatpat", rupees(1_240), "Electricity bill", 10)
+    await paid(shanti, "aarav@jhatpat", rupees(2_000), "Pocket money", 5)
+    await paid(aarav, "campuschai@jhatpat", rupees(40), "Chai and samosa", 2)
+    await paid(aarav, "ravistore@suraksha", rupees(350), "Groceries", 1)
+
+    # One payment that failed in the switch and was refunded, so the history shows a
+    # reversal from day one.
+    at = now - timedelta(days=3)
+    p = await payments.accept_payment(
+        db,
+        payer_user_id=aarav.id,
+        payee_vpa="campuschai@jhatpat",
+        amount_paise=rupees(120),
+        note="Snacks",
+        at=at,
+    )
+    await payments.send_to_switch(db, p.id, at + timedelta(seconds=2))
+    await payments.fail_payment(
+        db, p.id, at + timedelta(seconds=30), "The payee's bank did not respond"
+    )
+    await payments.complete_reversal(db, p.id, at + timedelta(minutes=20))
 
 
 async def main() -> None:

@@ -10,7 +10,7 @@ from app.config import settings
 
 def hash_password(password: str) -> str:
     # bcrypt is deliberately slow and salts every hash, so leaked hashes are hard to crack.
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=settings.bcrypt_rounds)).decode()
 
 
 def verify_password(password: str, password_hash: str) -> bool:

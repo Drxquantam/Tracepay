@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 12 * 60
 
+    # bcrypt cost factor (2^rounds iterations). 12 is a sensible production-style default;
+    # the test suite sets 4 so its many logins don't take minutes.
+    bcrypt_rounds: int = 12
+
     cors_origins: str = "http://localhost:5173"  # comma-separated
 
 
