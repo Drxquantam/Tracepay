@@ -16,7 +16,7 @@ works out the compensation your bank owes you.
 |---|---|---|
 | ![Home](docs/screenshots/home.jpg) | ![Guardian](docs/screenshots/guardian.jpg) | ![Mandates](docs/screenshots/mandates.jpg) |
 
-| TracePay Black · V12 Limited Edition (3D tilt and flip) | Login |
+| TracePay · Grand Prix Edition card (3D tilt and flip) | Login |
 |---|---|
 | ![TracePay Black card](docs/screenshots/card-front.jpg) | ![Login](docs/screenshots/login.jpg) |
 
@@ -119,12 +119,13 @@ Afterwards: Admin panel → **Heal all** and Time travel → **Reset**.
   Geist for text, Geist Mono for labels and references, tabular figures for money.
 - Money motif: a *guilloché*, the engraved line pattern on banknotes, generated in code
   from hypotrochoid curves and slowly rotating on the login screen and the balance card.
-- **TracePay Black · V12 Limited Edition**: an interactive 3D card styled like a
-  carbon-fibre hypercar (an original shaded bronze-gold car drawn in SVG, no real car brand's name or logo): gold
-  detailing, a numbered "Nº 007 / 100" edition, spinning Y-spoke wheels, and the
-  cardholder's name in shining gold. It tilts toward the pointer, a reflection follows
-  it, and it flips on click or Enter. It deliberately has no card number, expiry or CVV;
-  the back says it's a simulation, not a payment card.
+- **TracePay · Grand Prix Edition**: an interactive 3D racing card on carbon fibre: an
+  original open-wheel race car (car 07, halo, DRS rear wing, spinning wheels), a purple
+  "fastest lap" timing chip (purple is the fastest time on a race timing screen, and the
+  app's accent), a checkered flag, and the driver's name in shining gold. The back has a
+  circuit map with a car lapping it. It tilts toward the pointer and flips on click or
+  Enter. No official racing-series or team names, logos or liveries are used, and it has
+  no card number, expiry or CVV: it says it's not a payment card.
 
 **3. Mandate Manager**
 - Every recurring debit in one place: next date, amount, cap, trial-to-paid flag, recent
