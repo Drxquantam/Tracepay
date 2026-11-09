@@ -45,7 +45,7 @@ const LEG1_D = `M${P0.x} ${P0.y} Q${C1.x} ${C1.y} ${P1.x} ${P1.y}`;
 const RETURN_D = `M${P1.x} ${P1.y} Q${CR.x} ${CR.y} ${P0.x} ${P0.y}`;
 
 const COLOR: Record<Health | "done", string> = {
-  ok: "rgb(var(--teal))",
+  ok: "rgb(var(--primary))",
   done: "rgb(var(--ok))",
   delayed: "rgb(var(--warn))",
   late: "rgb(var(--bad))",
@@ -114,8 +114,8 @@ export function FlightPath({ position, health, state, stages, summary }: Props) 
       <svg viewBox="0 0 400 160" className="w-full overflow-visible" role="img" aria-label={summary}>
         <defs>
           <linearGradient id="trackGrad" x1="0" x2="1">
-            <stop offset="0%" stopColor="rgb(var(--teal))" />
-            <stop offset="100%" stopColor="rgb(var(--violet))" />
+            <stop offset="0%" stopColor="rgb(var(--primary))" />
+            <stop offset="100%" stopColor="rgb(var(--deep))" />
           </linearGradient>
           <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
             <feGaussianBlur stdDeviation="6" />
@@ -141,7 +141,7 @@ export function FlightPath({ position, health, state, stages, summary }: Props) 
           <motion.path
             d={position === "switch" ? LEG2_D : LEG1_D}
             fill="none"
-            stroke="rgb(var(--teal) / 0.7)"
+            stroke="rgb(var(--primary) / 0.7)"
             strokeWidth={3}
             strokeLinecap="round"
             strokeDasharray="1 11"

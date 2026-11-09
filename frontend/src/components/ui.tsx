@@ -9,7 +9,7 @@ import type { PaymentState } from "../lib/types";
 export const cn = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
 
 export function Card({ className, children, glow }: { className?: string; children: ReactNode; glow?: boolean }) {
-  return <div className={cn("glass rounded-3xl p-5 sm:p-6", glow && "shadow-glow-violet", className)}>{children}</div>;
+  return <div className={cn("panel rounded-2xl p-5 sm:p-6", glow && "shadow-glow-deep", className)}>{children}</div>;
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -27,12 +27,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition",
+        "inline-flex items-center justify-center gap-2 rounded-xl font-medium tracking-tight transition",
         "disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]",
-        size === "lg" ? "h-14 px-6 text-base" : "h-11 px-4 text-sm",
-        variant === "primary" && "bg-accent text-white shadow-glow hover:brightness-110",
-        variant === "ghost" && "glass text-ink hover:bg-line/10",
-        variant === "danger" && "bg-bad/90 text-white hover:bg-bad",
+        size === "lg" ? "h-12 px-5 text-[15px]" : "h-10 px-4 text-sm",
+        // Solid purple with a 1px top highlight: reads as a physical button, not a gradient blob.
+        variant === "primary" &&
+          "bg-deep text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_8px_24px_-12px_rgb(var(--deep)/0.8)] hover:bg-deep/90",
+        variant === "ghost" && "border border-line/10 bg-raised text-ink hover:border-line/20",
+        variant === "danger" && "border border-bad/30 bg-bad/10 text-bad hover:bg-bad/15",
         className,
       )}
       {...rest}
@@ -61,8 +63,8 @@ export const TextField = forwardRef<HTMLInputElement, FieldProps>(function TextF
         aria-invalid={!!error}
         aria-describedby={hint || error ? `${inputId}-help` : undefined}
         className={cn(
-          "glass h-12 w-full rounded-2xl px-4 text-ink placeholder:text-muted/60",
-          "focus:outline-none focus:ring-2 focus:ring-teal/60",
+          "h-12 w-full rounded-xl border border-line/10 bg-raised px-4 text-ink placeholder:text-muted/60",
+          "transition focus:border-primary/60 focus:outline-none focus:ring-4 focus:ring-primary/15",
           error && "ring-2 ring-bad/60",
           className,
         )}
@@ -78,7 +80,7 @@ export const TextField = forwardRef<HTMLInputElement, FieldProps>(function TextF
 });
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-2xl bg-line/10", className)} aria-hidden />;
+  return <div className={cn("animate-pulse rounded-xl bg-line/10", className)} aria-hidden />;
 }
 
 /** "Simulation only" pill, shown on every screen. */
@@ -86,36 +88,33 @@ export function SimulationBadge({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-warn/30 bg-warn/10 px-2.5 py-1",
-        "text-[11px] font-semibold uppercase tracking-wide text-warn",
+        "inline-flex items-center gap-1.5 rounded-md border border-warn/25 bg-warn/[0.07] px-2 py-1",
+        "font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-warn",
         className,
       )}
     >
-      <FlaskConical className="h-3.5 w-3.5" aria-hidden />
+      <FlaskConical className="h-3 w-3" aria-hidden />
       Simulation only
     </span>
   );
 }
 
+// Status = a coloured dot + quiet label. Colour carries meaning; the pill stays neutral.
 const STATE_TONE: Record<PaymentState, string> = {
-  initiated: "bg-line/10 text-muted",
-  held: "bg-warn/15 text-warn",
-  bank_debited: "bg-teal/15 text-teal",
-  in_switch: "bg-teal/15 text-teal",
-  credited: "bg-ok/15 text-ok",
-  failed: "bg-bad/15 text-bad",
-  reversal_pending: "bg-warn/15 text-warn",
-  reversed: "bg-violet/15 text-violet",
+  initiated: "bg-muted",
+  held: "bg-warn",
+  bank_debited: "bg-primary",
+  in_switch: "bg-primary",
+  credited: "bg-ok",
+  failed: "bg-bad",
+  reversal_pending: "bg-warn",
+  reversed: "bg-primary",
 };
 
 export function StateBadge({ state, stuck }: { state: PaymentState; stuck?: boolean }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
-        stuck ? "bg-warn/15 text-warn" : STATE_TONE[state],
-      )}
-    >
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-line/10 bg-raised px-2 py-0.5 text-xs font-medium text-ink/80">
+      <span className={cn("h-1.5 w-1.5 rounded-full", stuck ? "bg-warn" : STATE_TONE[state])} aria-hidden />
       {stuck ? "Delayed" : STATE_LABEL[state]}
     </span>
   );
@@ -151,7 +150,7 @@ export function AnimatedAmount({ paise, className }: { paise: number; className?
 export function EmptyState({ icon, title, children }: { icon: ReactNode; title: string; children?: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-2 py-10 text-center">
-      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-line/10 text-muted">{icon}</div>
+      <div className="grid h-11 w-11 place-items-center rounded-xl border border-line/10 bg-raised text-muted">{icon}</div>
       <p className="font-semibold">{title}</p>
       {children && <p className="max-w-xs text-sm text-muted">{children}</p>}
     </div>
@@ -161,7 +160,7 @@ export function EmptyState({ icon, title, children }: { icon: ReactNode; title: 
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="mb-3 flex items-center justify-between">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">{children}</h2>
+      <h2 className="label">{children}</h2>
       {action}
     </div>
   );

@@ -17,7 +17,7 @@ const monthKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", ye
 const monthShort = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short" });
 
 const DEBIT_TONE: Record<MandateDebit["status"], string> = {
-  notified: "bg-teal/15 text-teal",
+  notified: "bg-primary/15 text-primary",
   retrying: "bg-warn/15 text-warn",
   succeeded: "bg-ok/15 text-ok",
   failed: "bg-bad/15 text-bad",
@@ -66,7 +66,7 @@ export default function Mandates() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Mandates</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Mandates</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
             Every subscription and auto-debit in one place. You get a notice 24 hours before each debit, and can pause or cancel any of them in one tap.
           </p>
@@ -112,13 +112,13 @@ export default function Mandates() {
                     cursor={{ fill: "rgb(var(--line) / 0.06)" }}
                     content={({ active: on, payload }) =>
                       on && payload?.length ? (
-                        <div className="glass rounded-xl px-3 py-2 text-xs">
+                        <div className="panel rounded-xl px-3 py-2 text-xs">
                           <span className="money font-semibold">{formatINR(Number(payload[0].value))}</span>
                         </div>
                       ) : null
                     }
                   />
-                  <Bar dataKey="paise" radius={[8, 8, 8, 8]} fill="rgb(var(--violet))" />
+                  <Bar dataKey="paise" radius={[8, 8, 8, 8]} fill="rgb(var(--deep))" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -139,12 +139,12 @@ function MandateCard({ m, onAction }: { m: Mandate; onAction: (m: Mandate, verb:
   return (
     <Card className={cn(m.status === "revoked" && "opacity-60")}>
       <div className="flex items-start gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-violet/15 text-violet">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-deep/15 text-deep">
           <CalendarClock className="h-5 w-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-bold">{m.merchant_name}</p>
+            <p className="font-semibold">{m.merchant_name}</p>
             <span
               className={cn(
                 "rounded-full px-2.5 py-0.5 text-xs font-semibold",
@@ -159,7 +159,7 @@ function MandateCard({ m, onAction }: { m: Mandate; onAction: (m: Mandate, verb:
           </p>
         </div>
         <div className="text-right">
-          <p className="money text-xl font-extrabold">{formatINR(next?.amount_paise ?? m.amount_paise)}</p>
+          <p className="money text-xl font-semibold">{formatINR(next?.amount_paise ?? m.amount_paise)}</p>
           <p className="text-xs text-muted">
             {pending
               ? `debits ${formatDateTime(pending.next_attempt_at!)}`
@@ -174,8 +174,8 @@ function MandateCard({ m, onAction }: { m: Mandate; onAction: (m: Mandate, verb:
 
       {/* Trial-to-paid: the classic "₹1 that becomes ₹499" surprise, flagged loudly. */}
       {onTrial && firstPaid && (
-        <p className="mt-4 flex items-start gap-2 rounded-2xl bg-violet/10 px-3 py-2 text-sm">
-          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-violet" aria-hidden />
+        <p className="mt-4 flex items-start gap-2 rounded-xl bg-deep/10 px-3 py-2 text-sm">
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-deep" aria-hidden />
           <span>
             <span className="font-semibold">Trial: {formatINR(m.trial_amount_paise!)} now, then {formatINR(m.amount_paise)}</span> every month from {formatDate(firstPaid.due_at)}.
             Cancel before then if you don't want the paid plan.
@@ -193,7 +193,7 @@ function MandateCard({ m, onAction }: { m: Mandate; onAction: (m: Mandate, verb:
               {d.status === "retrying" && d.next_attempt_at && <span className="text-warn">· try {d.attempts + 1} at {formatDateTime(d.next_attempt_at)}</span>}
               {d.failure_reason && d.status !== "succeeded" && <span className="w-full text-xs text-muted">{d.failure_reason}</span>}
               {d.payment_id && (
-                <Link to={`/payments/${d.payment_id}`} className="ml-auto text-xs font-semibold text-teal hover:underline">
+                <Link to={`/payments/${d.payment_id}`} className="ml-auto text-xs font-semibold text-primary hover:underline">
                   Track
                 </Link>
               )}
@@ -267,7 +267,7 @@ function NewMandate({ now, onCreated }: { now: Date; onCreated: () => void }) {
           <label htmlFor="merchant" className="block text-sm font-medium text-muted">
             Merchant
           </label>
-          <select id="merchant" required value={merchant} onChange={(e) => setMerchant(e.target.value)} className="glass h-12 w-full rounded-2xl px-4 text-ink">
+          <select id="merchant" required value={merchant} onChange={(e) => setMerchant(e.target.value)} className="panel h-12 w-full rounded-xl px-4 text-ink">
             <option value="">Choose a merchant</option>
             {merchants.map((p) => (
               <option key={p.vpa} value={p.vpa}>

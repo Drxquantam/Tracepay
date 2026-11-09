@@ -1,5 +1,5 @@
-// Home dashboard: balance, anything that needs attention (money in flight, disputes),
-// spending, and recent payments.
+// Home dashboard: balance and the 3D TracePay Black card, anything that needs attention
+// (holds, money in flight, disputes), recent payments and spending.
 
 import { motion } from "framer-motion";
 import { ArrowRight, Inbox, PlaneTakeoff, Scale, Send, Snowflake } from "lucide-react";
@@ -9,7 +9,9 @@ import { HoldCard } from "../components/HoldCard";
 import Admin from "./Admin";
 import { PaymentRow } from "../components/PaymentRow";
 import { SpendChart } from "../components/SpendChart";
-import { AnimatedAmount, Button, Card, EmptyState, SectionTitle, Skeleton } from "../components/ui";
+import { Guilloche } from "../components/brand";
+import { PremiumCard } from "../components/PremiumCard";
+import { AnimatedAmount, Button, Card, cn, EmptyState, SectionTitle, Skeleton } from "../components/ui";
 import { useAuth } from "../lib/auth";
 import { formatDateTime, formatINR } from "../lib/format";
 import type { Dispute, Holds, Payment } from "../lib/types";
@@ -46,52 +48,59 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-muted">{greeting()},</p>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{me?.full_name.split(" ")[0]}</h1>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Balance */}
-        <Card glow className="relative overflow-hidden lg:col-span-3">
-          <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-accent opacity-25 blur-3xl" aria-hidden />
-          <p className="text-sm font-medium text-muted">Available balance</p>
-          {account ? (
-            <AnimatedAmount paise={account.balance_paise} className="mt-1 block text-4xl font-extrabold sm:text-5xl" />
-          ) : (
-            <Skeleton className="mt-2 h-12 w-48" />
-          )}
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-            <span className="glass rounded-full px-3 py-1 font-medium">{account?.vpa}</span>
-            <span className="text-muted">{account?.bank_name}</span>
-            {account?.is_frozen && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-warn/15 px-2.5 py-1 text-xs font-semibold text-warn">
-                <Snowflake className="h-3.5 w-3.5" aria-hidden /> Payments frozen
-              </span>
+      {/* Hero: balance and actions beside the 3D card, over a faint banknote engraving. */}
+      <section className="panel relative overflow-hidden rounded-2xl p-6 sm:p-8">
+        <Guilloche className="absolute -bottom-64 -left-48 h-[560px] w-[560px] text-primary/[0.09]" speed={220} />
+        <div className="pointer-events-none absolute -right-32 -top-40 h-80 w-80 rounded-full bg-deep/20 blur-3xl" aria-hidden />
+        <div className="relative grid items-center gap-10 lg:grid-cols-[1fr_auto]">
+          <div className="order-last lg:order-none">
+            <p className="label">
+              {greeting()}, {me?.full_name.split(" ")[0]}
+            </p>
+            <p className="mt-6 text-sm text-muted">Available balance</p>
+            {account ? (
+              <AnimatedAmount paise={account.balance_paise} className="mt-1 block text-5xl font-semibold sm:text-6xl" />
+            ) : (
+              <Skeleton className="mt-2 h-14 w-56" />
             )}
+            <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
+              <span className="font-mono text-[13px] text-ink/80">{account?.vpa}</span>
+              <span aria-hidden>·</span>
+              {account?.bank_name}
+              {account?.is_frozen && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-warn/30 bg-warn/10 px-2 py-0.5 text-xs font-medium text-warn">
+                  <Snowflake className="h-3 w-3" aria-hidden /> Frozen
+                </span>
+              )}
+            </p>
+            <div className="mt-8 flex gap-3">
+              <Link to="/pay">
+                <Button size="lg" className="w-36">
+                  <Send className="h-4 w-4" aria-hidden /> Pay
+                </Button>
+              </Link>
+              <Link to="/disputes">
+                <Button size="lg" variant="ghost" className="w-36">
+                  <Scale className="h-4 w-4" aria-hidden /> Disputes
+                </Button>
+              </Link>
+            </div>
+            <dl className="mt-8 grid max-w-sm grid-cols-2 gap-px overflow-hidden rounded-xl border border-line/[0.07] bg-line/[0.07]">
+              <div className="bg-surface px-4 py-3">
+                <dt className="label">In flight</dt>
+                <dd className="money mt-1 text-lg font-semibold">{inFlight.length}</dd>
+              </div>
+              <div className="bg-surface px-4 py-3">
+                <dt className="label">Open disputes</dt>
+                <dd className={cn("money mt-1 text-lg font-semibold", openDisputes.length > 0 && "text-bad")}>{openDisputes.length}</dd>
+              </div>
+            </dl>
           </div>
-          <div className="mt-6 flex gap-3">
-            <Link to="/pay" className="flex-1 sm:flex-none">
-              <Button size="lg" className="w-full sm:w-40">
-                <Send className="h-5 w-5" aria-hidden /> Pay
-              </Button>
-            </Link>
-            <Link to="/disputes" className="flex-1 sm:flex-none">
-              <Button size="lg" variant="ghost" className="w-full sm:w-40">
-                <Scale className="h-5 w-5" aria-hidden /> Disputes
-              </Button>
-            </Link>
+          <div className="mx-auto w-full max-w-[400px] lg:w-[400px]">
+            {account && <PremiumCard holder={me?.full_name ?? ""} vpa={account.vpa} bank={account.bank_name} frozen={account.is_frozen} />}
           </div>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          {payments.loading || clock.loading ? (
-            <Skeleton className="h-44" />
-          ) : (
-            <SpendChart payments={list} myVpa={account?.vpa} now={clock.data ? new Date(clock.data.now) : new Date()} />
-          )}
-        </Card>
-      </div>
+        </div>
+      </section>
 
       {/* Requests waiting on this person come first: they're time-limited. */}
       {holds.data && (holds.data.to_decide.length > 0 || holds.data.mine.length > 0) && (
@@ -116,7 +125,7 @@ export default function Home() {
               <motion.div key={`d${d.id}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <Link to={`/payments/${d.payment_id}`}>
                   <Card className="flex items-center gap-4 border-bad/30 transition hover:shadow-glow">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-bad/15 text-bad">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-bad/15 text-bad">
                       <Scale className="h-5 w-5" aria-hidden />
                     </span>
                     <span className="min-w-0 flex-1">
@@ -134,7 +143,7 @@ export default function Home() {
               <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: (openDisputes.length + i) * 0.05 }}>
                 <Link to={`/payments/${p.id}`}>
                   <Card className="flex items-center gap-4 transition hover:shadow-glow">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-warn/15 text-warn">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-warn/15 text-warn">
                       <PlaneTakeoff className="h-5 w-5" aria-hidden />
                     </span>
                     <span className="min-w-0 flex-1">
@@ -154,30 +163,39 @@ export default function Home() {
         </section>
       )}
 
-      <section aria-labelledby="recent">
-        <Card>
-          <SectionTitle>
-            <span id="recent">Recent activity</span>
-          </SectionTitle>
-          {payments.loading ? (
-            <div className="space-y-3">
-              {[0, 1, 2].map((i) => (
-                <Skeleton key={i} className="h-14" />
-              ))}
-            </div>
-          ) : list.length === 0 ? (
-            <EmptyState icon={<Inbox className="h-5 w-5" />} title="No payments yet">
-              Your payments will show up here.
-            </EmptyState>
+      <div className="grid gap-6 lg:grid-cols-5">
+        <section aria-labelledby="recent" className="lg:col-span-3">
+          <Card className="h-full">
+            <SectionTitle>
+              <span id="recent">Recent activity</span>
+            </SectionTitle>
+            {payments.loading ? (
+              <div className="space-y-3">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-14" />
+                ))}
+              </div>
+            ) : list.length === 0 ? (
+              <EmptyState icon={<Inbox className="h-5 w-5" />} title="No payments yet">
+                Your payments will show up here.
+              </EmptyState>
+            ) : (
+              <div className="-mx-2 divide-y divide-line/5">
+                {list.slice(0, 8).map((p) => (
+                  <PaymentRow key={p.id} payment={p} myVpa={account?.vpa} />
+                ))}
+              </div>
+            )}
+          </Card>
+        </section>
+        <Card className="lg:col-span-2">
+          {payments.loading || clock.loading ? (
+            <Skeleton className="h-44" />
           ) : (
-            <div className="-mx-2 divide-y divide-line/5">
-              {list.slice(0, 8).map((p) => (
-                <PaymentRow key={p.id} payment={p} myVpa={account?.vpa} />
-              ))}
-            </div>
+            <SpendChart payments={list} myVpa={account?.vpa} now={clock.data ? new Date(clock.data.now) : new Date()} />
           )}
         </Card>
-      </section>
+      </div>
     </div>
   );
 }

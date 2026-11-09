@@ -16,9 +16,13 @@ works out the compensation your bank owes you.
 |---|---|---|
 | ![Home](docs/screenshots/home.jpg) | ![Guardian](docs/screenshots/guardian.jpg) | ![Mandates](docs/screenshots/mandates.jpg) |
 
-| Admin panel | Phone layout | Login |
+| TracePay Black card (3D, tilt and flip) | Card back | Login |
 |---|---|---|
-| ![Admin](docs/screenshots/admin.jpg) | ![Phone](docs/screenshots/mobile-tracker.jpg) | ![Login](docs/screenshots/login.jpg) |
+| ![Card front](docs/screenshots/card-front.jpg) | ![Card back](docs/screenshots/card-back.jpg) | ![Login](docs/screenshots/login.jpg) |
+
+| Admin panel |
+|---|
+| ![Admin](docs/screenshots/admin.jpg) |
 
 ---
 
@@ -109,6 +113,15 @@ Afterwards: Admin panel → **Heal all** and Time travel → **Reset**.
 - A one-tap kill switch (freeze or unfreeze) for the user or their trusted person, a
   notification centre, and a senior mode that enlarges the whole UI.
 - *Guardian mode reduces risk but cannot stop every coached scam* (the app says so too).
+
+**Design**
+- Black and purple, built on a handful of CSS-variable tokens (light mode included).
+  Geist for text, Geist Mono for labels and references, tabular figures for money.
+- Money motif: a *guilloché*, the engraved line pattern on banknotes, generated in code
+  from hypotrochoid curves and slowly rotating on the login screen and the balance card.
+- **TracePay Black**: an interactive 3D metal card. It tilts toward the pointer, a
+  holographic light follows it, and it flips on click or Enter. It deliberately has no
+  card number, expiry or CVV; the back says it's a simulation, not a payment card.
 
 **3. Mandate Manager**
 - Every recurring debit in one place: next date, amount, cap, trial-to-paid flag, recent

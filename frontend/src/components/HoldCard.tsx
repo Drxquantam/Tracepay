@@ -39,11 +39,11 @@ export function HoldCard({ hold, as, onDone }: { hold: Hold; as: "guardian" | "p
   return (
     <Card className="border-warn/30">
       <div className="flex items-start gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-warn/15 text-warn">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-warn/15 text-warn">
           {approval ? <ShieldAlert className="h-5 w-5" aria-hidden /> : <Hourglass className="h-5 w-5" aria-hidden />}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-lg font-bold leading-snug">
+          <p className="text-lg font-semibold leading-snug">
             {as === "guardian" ? `${hold.payer_name} wants to pay` : "You're paying"} <span className="money">{formatINR(hold.amount_paise)}</span> to{" "}
             {hold.payee_name}
           </p>
@@ -53,7 +53,7 @@ export function HoldCard({ hold, as, onDone }: { hold: Hold; as: "guardian" | "p
               ? `${as === "guardian" ? "Decide" : `Waiting for ${hold.guardian_name}`} before ${formatDateTime(hold.due_at)}, or it is cancelled.`
               : `Sends automatically at ${formatDateTime(hold.due_at)}.`}
           </p>
-          <Link to={`/payments/${hold.payment_id}`} className="mt-1 inline-block text-sm font-semibold text-teal hover:underline">
+          <Link to={`/payments/${hold.payment_id}`} className="mt-1 inline-block text-sm font-semibold text-primary hover:underline">
             See details
           </Link>
         </div>

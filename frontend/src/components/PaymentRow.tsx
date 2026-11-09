@@ -22,9 +22,9 @@ export function PaymentRow({ payment, myVpa }: { payment: Payment; myVpa: string
   return (
     <Link
       to={`/payments/${payment.id}`}
-      className="flex items-center gap-3 rounded-2xl px-2 py-3 transition hover:bg-line/5 focus-visible:bg-line/5"
+      className="flex items-center gap-3 rounded-xl px-2 py-3 transition hover:bg-line/5 focus-visible:bg-line/5"
     >
-      <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-sm font-bold", sent ? "bg-violet/15 text-violet" : "bg-teal/15 text-teal")} aria-hidden>
+      <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-semibold", sent ? "bg-deep/15 text-deep" : "bg-primary/15 text-primary")} aria-hidden>
         {initials(other)}
       </span>
       <span className="min-w-0 flex-1">
@@ -35,7 +35,7 @@ export function PaymentRow({ payment, myVpa }: { payment: Payment; myVpa: string
         </span>
       </span>
       <span className="flex flex-col items-end gap-1">
-        <span className={cn("money font-bold", !settled && "text-muted", settled && !sent && "text-ok")}>
+        <span className={cn("money font-semibold", !settled && "text-muted", settled && !sent && "text-ok")}>
           {sent ? "−" : "+"}
           {formatINR(payment.amount_paise)}
         </span>

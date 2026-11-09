@@ -89,7 +89,7 @@ export default function Guardian() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Guardian mode</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Guardian mode</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
           A trusted person double-checks risky payments before any money leaves, and either of you can freeze the account in one tap.
         </p>
@@ -97,11 +97,11 @@ export default function Guardian() {
 
       {/* Kill switch: the biggest thing on the page. */}
       <Card glow className={cn("flex flex-wrap items-center gap-4", o.is_frozen && "border-warn/40")}>
-        <span className={cn("grid h-14 w-14 place-items-center rounded-2xl", o.is_frozen ? "bg-warn/15 text-warn" : "bg-ok/15 text-ok")}>
+        <span className={cn("grid h-14 w-14 place-items-center rounded-xl", o.is_frozen ? "bg-warn/15 text-warn" : "bg-ok/15 text-ok")}>
           {o.is_frozen ? <Snowflake className="h-7 w-7" aria-hidden /> : <ShieldCheck className="h-7 w-7" aria-hidden />}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-lg font-bold">{o.is_frozen ? "Your account is frozen" : "Your account is active"}</p>
+          <p className="text-lg font-semibold">{o.is_frozen ? "Your account is frozen" : "Your account is active"}</p>
           <p className="text-sm text-muted">
             {o.is_frozen
               ? "No money can leave until you or your trusted person unfreezes it."
@@ -144,7 +144,7 @@ export default function Guardian() {
               <label htmlFor="guardian" className="block text-sm font-medium text-muted">
                 Trusted person
               </label>
-              <select id="guardian" value={guardian} onChange={(e) => setGuardian(e.target.value)} className="glass h-12 w-full rounded-2xl px-4 text-ink">
+              <select id="guardian" value={guardian} onChange={(e) => setGuardian(e.target.value)} className="panel h-12 w-full rounded-xl px-4 text-ink">
                 <option value="">Nobody (guardian mode off)</option>
                 {o.candidates.map((c) => (
                   <option key={c.username} value={c.username}>
@@ -154,8 +154,8 @@ export default function Guardian() {
               </select>
             </div>
             <RupeeField id="threshold" label="Ask them before payments of" value={threshold} onChange={setThreshold} hint="Leave empty to switch off." disabled={!guardian} />
-            <label className={cn("flex items-start gap-3 rounded-2xl bg-line/5 p-3", !guardian && "opacity-50")}>
-              <input type="checkbox" checked={newPayee} onChange={(e) => setNewPayee(e.target.checked)} disabled={!guardian} className="mt-1 h-5 w-5 accent-teal" />
+            <label className={cn("flex items-start gap-3 rounded-xl bg-line/5 p-3", !guardian && "opacity-50")}>
+              <input type="checkbox" checked={newPayee} onChange={(e) => setNewPayee(e.target.checked)} disabled={!guardian} className="mt-1 h-5 w-5 accent-primary" />
               <span>
                 <span className="block text-sm font-semibold">Ask them before paying someone new</span>
                 <span className="block text-xs text-muted">Scammers usually ask you to pay an account you've never paid before.</span>
@@ -167,7 +167,7 @@ export default function Guardian() {
                 <label htmlFor="minutes" className="block text-sm font-medium text-muted">
                   for (min)
                 </label>
-                <input id="minutes" inputMode="numeric" value={coolingMinutes} onChange={(e) => setCoolingMinutes(e.target.value)} disabled={!guardian} className="glass h-12 w-full rounded-2xl px-4" />
+                <input id="minutes" inputMode="numeric" value={coolingMinutes} onChange={(e) => setCoolingMinutes(e.target.value)} disabled={!guardian} className="panel h-12 w-full rounded-xl px-4" />
               </div>
             </div>
             <Button type="submit" size="lg" className="w-full" loading={busy}>
@@ -186,7 +186,7 @@ export default function Guardian() {
             ) : (
               <ul className="space-y-3">
                 {o.protecting.map((p) => (
-                  <li key={p.username} className="flex flex-wrap items-center gap-3 rounded-2xl bg-line/5 p-3">
+                  <li key={p.username} className="flex flex-wrap items-center gap-3 rounded-xl bg-line/5 p-3">
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold">{p.full_name}</span>
                       <span className="block text-xs text-muted">
@@ -203,7 +203,7 @@ export default function Guardian() {
           </Card>
 
           <Card className="flex gap-3 text-sm">
-            <Info className="mt-0.5 h-5 w-5 shrink-0 text-violet" aria-hidden />
+            <Info className="mt-0.5 h-5 w-5 shrink-0 text-deep" aria-hidden />
             <p className="text-muted">
               <span className="font-semibold text-ink">Guardian mode reduces risk, but it can't stop every scam.</span> Someone being coached by a scammer can be
               talked into asking for approval, or into changing these rules. If a caller is rushing you to pay, stop and call someone you trust.
@@ -232,7 +232,7 @@ function RupeeField(props: { id: string; label: string; value: string; onChange:
           value={props.value}
           disabled={props.disabled}
           onChange={(e) => props.onChange(e.target.value)}
-          className="glass money h-12 w-full rounded-2xl pl-8 pr-4"
+          className="panel money h-12 w-full rounded-xl pl-8 pr-4"
           aria-describedby={`${props.id}-hint`}
         />
       </div>

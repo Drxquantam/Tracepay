@@ -23,15 +23,15 @@ export function SpendChart({ payments, myVpa, now }: { payments: Payment[]; myVp
 
   return (
     <div>
-      <p className="money text-2xl font-bold">{formatINR(total)}</p>
+      <p className="money text-2xl font-semibold">{formatINR(total)}</p>
       <p className="mb-2 text-xs text-muted">spent in the last 7 days</p>
       <div className="h-32" role="img" aria-label={`Spending over the last 7 days, ${formatINR(total)} in total`}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={days} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
             <defs>
               <linearGradient id="spendFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="rgb(var(--teal))" stopOpacity={0.45} />
-                <stop offset="100%" stopColor="rgb(var(--violet))" stopOpacity={0} />
+                <stop offset="0%" stopColor="rgb(var(--primary))" stopOpacity={0.45} />
+                <stop offset="100%" stopColor="rgb(var(--deep))" stopOpacity={0} />
               </linearGradient>
             </defs>
             <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "rgb(var(--muted))", fontSize: 11 }} />
@@ -39,13 +39,13 @@ export function SpendChart({ payments, myVpa, now }: { payments: Payment[]; myVp
               cursor={{ stroke: "rgb(var(--line) / 0.15)" }}
               content={({ active, payload }) =>
                 active && payload?.length ? (
-                  <div className="glass rounded-xl px-3 py-2 text-xs">
+                  <div className="panel rounded-xl px-3 py-2 text-xs">
                     <span className="money font-semibold">{formatINR(Number(payload[0].value))}</span>
                   </div>
                 ) : null
               }
             />
-            <Area type="monotone" dataKey="paise" stroke="rgb(var(--teal))" strokeWidth={2.5} fill="url(#spendFill)" />
+            <Area type="monotone" dataKey="paise" stroke="rgb(var(--primary))" strokeWidth={2.5} fill="url(#spendFill)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>

@@ -23,7 +23,7 @@ export default function Notifications() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold tracking-tight">Notifications</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
         {data && data.unread > 0 && (
           <Button variant="ghost" onClick={readAll}>
             <CheckCheck className="h-4 w-4" aria-hidden /> Mark all as read
@@ -44,10 +44,10 @@ export default function Notifications() {
           <ul>
             {data.items.map((n) => {
               const body = (
-                <div className="flex gap-3 rounded-2xl p-3 transition hover:bg-line/5">
-                  <span className={cn("mt-2 h-2.5 w-2.5 shrink-0 rounded-full", n.read_at ? "bg-transparent" : "bg-teal")} aria-label={n.read_at ? undefined : "Unread"} />
+                <div className="flex gap-3 rounded-xl p-3 transition hover:bg-line/5">
+                  <span className={cn("mt-2 h-2.5 w-2.5 shrink-0 rounded-full", n.read_at ? "bg-transparent" : "bg-primary")} aria-label={n.read_at ? undefined : "Unread"} />
                   <span className="min-w-0">
-                    <span className={cn("block", n.read_at ? "font-medium" : "font-bold")}>{n.title}</span>
+                    <span className={cn("block", n.read_at ? "font-medium" : "font-semibold")}>{n.title}</span>
                     <span className="block text-sm text-muted">{n.body}</span>
                     <span className="mt-1 block text-xs text-muted">{formatDateTime(n.created_at)}</span>
                   </span>

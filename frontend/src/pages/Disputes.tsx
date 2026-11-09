@@ -14,7 +14,7 @@ export default function Disputes() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Disputes</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Disputes</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
           If money leaves your account but doesn't arrive or come back in time, TracePay opens a dispute for you automatically and works out what your bank owes.
         </p>
@@ -24,7 +24,7 @@ export default function Disputes() {
         <Card glow className="flex flex-wrap items-center gap-6">
           <div>
             <p className="text-sm text-muted">Total compensation owed</p>
-            <p className="money text-gradient text-4xl font-extrabold">{formatINR(owed)}</p>
+            <p className="money text-gradient text-4xl font-semibold">{formatINR(owed)}</p>
           </div>
           <p className="max-w-sm text-sm text-muted">Owed by the banks involved, not by the shops or people you paid.</p>
         </Card>

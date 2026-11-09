@@ -53,19 +53,19 @@ export function DisputeCard({ dispute, simNow, onChange }: { dispute: Dispute; s
   return (
     <Card className={cn(open && "border-bad/30")}>
       <div className="flex items-center gap-2 text-sm font-semibold">
-        <Scale className="h-4 w-4 text-violet" aria-hidden />
+        <Scale className="h-4 w-4 text-deep" aria-hidden />
         Dispute opened automatically
         <span className={cn("ml-auto rounded-full px-2.5 py-0.5 text-xs", open ? "bg-bad/15 text-bad" : "bg-ok/15 text-ok")}>{open ? "Open" : "Resolved"}</span>
       </div>
 
       <div className="mt-4">
         <p className="text-sm text-muted">Compensation owed to you</p>
-        <AnimatedAmount paise={dispute.compensation_owed_paise} className="block text-4xl font-extrabold text-gradient" />
+        <AnimatedAmount paise={dispute.compensation_owed_paise} className="block text-4xl font-semibold text-gradient" />
         <p className="mt-1 font-semibold">{dispute.headline}</p>
       </div>
 
       {/* The single most important sentence on this card. */}
-      <p className="mt-4 rounded-2xl bg-violet/10 px-4 py-3 text-sm font-medium">{dispute.who_owes}</p>
+      <p className="mt-4 rounded-xl bg-deep/10 px-4 py-3 text-sm font-medium">{dispute.who_owes}</p>
 
       <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <div>
@@ -87,7 +87,7 @@ export function DisputeCard({ dispute, simNow, onChange }: { dispute: Dispute; s
           const previousDone = dispute.steps.slice(0, i).every((p) => p.completed_at);
           const locked = s.step === "ombudsman" && (!s.available_at || new Date(s.available_at) > new Date(simNow));
           return (
-            <li key={s.step} className="flex gap-3 rounded-2xl bg-line/5 p-3">
+            <li key={s.step} className="flex gap-3 rounded-xl bg-line/5 p-3">
               {s.completed_at ? (
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-ok" aria-label="Done" />
               ) : locked ? (

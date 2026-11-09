@@ -33,7 +33,7 @@ export function CountdownRing({ secondsToDeadline, windowSeconds, fetchedAt, bre
   const left = resolved ? 0 : secondsToDeadline - (now - fetchedAt) / 1000;
   const late = breached || left <= 0;
   const fraction = resolved ? 1 : late ? 1 : Math.max(0, Math.min(1, left / windowSeconds));
-  const color = resolved ? (breached ? "rgb(var(--warn))" : "rgb(var(--ok))") : late ? "rgb(var(--bad))" : fraction < 0.25 ? "rgb(var(--warn))" : "rgb(var(--teal))";
+  const color = resolved ? (breached ? "rgb(var(--warn))" : "rgb(var(--ok))") : late ? "rgb(var(--bad))" : fraction < 0.25 ? "rgb(var(--warn))" : "rgb(var(--primary))";
 
   let big: string;
   let small: string;
@@ -67,7 +67,7 @@ export function CountdownRing({ secondsToDeadline, windowSeconds, fetchedAt, bre
       </svg>
       <div className="absolute text-center">
         {resolved && !breached ? <CheckCircle2 className="mx-auto mb-1 h-5 w-5 text-ok" aria-hidden /> : null}
-        <p className="money text-xl font-extrabold leading-none">{big}</p>
+        <p className="money text-xl font-semibold leading-none">{big}</p>
         <p className="mt-1 text-xs text-muted">{small}</p>
       </div>
     </div>

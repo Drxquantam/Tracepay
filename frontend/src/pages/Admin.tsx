@@ -68,7 +68,7 @@ export default function Admin() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Admin panel</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Admin panel</h1>
         <p className="mt-1 text-sm text-muted">Simulation controls. Nothing here affects anything real.</p>
       </div>
 
@@ -76,11 +76,11 @@ export default function Admin() {
         {/* Demo story */}
         <Card glow>
           <div className="flex items-start gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent text-white">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent text-white">
               <Clapperboard className="h-5 w-5" aria-hidden />
             </span>
             <div>
-              <p className="font-bold">Run the demo story</p>
+              <p className="font-semibold">Run the demo story</p>
               <p className="mt-1 text-sm text-muted">
                 Aarav pays Ravi's shop. Suraksha Bank is killed mid-flight, the clock jumps 8 days, and a dispute opens by itself with ₹300 owed. Takes about 15 seconds.
               </p>
@@ -105,9 +105,9 @@ export default function Admin() {
             <Skeleton className="h-28" />
           ) : (
             <>
-              <div className={cn("flex items-center gap-3 rounded-2xl p-3", integrity.data.ok ? "bg-ok/10 text-ok" : "bg-bad/10 text-bad")}>
+              <div className={cn("flex items-center gap-3 rounded-xl p-3", integrity.data.ok ? "bg-ok/10 text-ok" : "bg-bad/10 text-bad")}>
                 {integrity.data.ok ? <ShieldCheck className="h-6 w-6" aria-hidden /> : <ShieldX className="h-6 w-6" aria-hidden />}
-                <p className="font-bold">{integrity.data.ok ? "All checks pass" : "A check failed"}</p>
+                <p className="font-semibold">{integrity.data.ok ? "All checks pass" : "A check failed"}</p>
               </div>
               <ul className="mt-3 space-y-2 text-sm">
                 <Check ok={integrity.data.ledger_total_paise === 0} label="All ledger rows sum to zero" value={formatINR(integrity.data.ledger_total_paise)} />
@@ -127,7 +127,7 @@ export default function Admin() {
         <Card>
           <SectionTitle>Time travel</SectionTitle>
           <div className="flex items-center gap-3">
-            <Clock3 className="h-5 w-5 text-teal" aria-hidden />
+            <Clock3 className="h-5 w-5 text-primary" aria-hidden />
             <div>
               <p className="font-semibold">{clock.data ? formatDateTime(clock.data.now) : "…"} IST (simulated)</p>
               <p className="text-xs text-muted">{offsetDays > 0 ? `${offsetDays.toFixed(1)} days ahead of real time` : "In sync with real time"}</p>
@@ -136,7 +136,7 @@ export default function Admin() {
           <label htmlFor="hours" className="mt-5 block text-sm font-medium text-muted">
             Jump forward: <span className="font-semibold text-ink">{describeHours(hours)}</span>
           </label>
-          <input id="hours" type="range" min={1} max={240} value={hours} onChange={(e) => setHours(Number(e.target.value))} className="mt-2 w-full accent-teal" />
+          <input id="hours" type="range" min={1} max={240} value={hours} onChange={(e) => setHours(Number(e.target.value))} className="mt-2 w-full accent-primary" />
           <div className="mt-3 flex flex-wrap gap-2">
             <Button loading={busy === `jump${hours * 3600}`} onClick={() => jump(hours * 3600)}>
               <FastForward className="h-4 w-4" aria-hidden /> Jump
@@ -171,7 +171,7 @@ export default function Admin() {
           </SectionTitle>
           <div className="space-y-4">
             {(banks.data ?? []).map((b) => (
-              <div key={b.code} className={cn("rounded-2xl p-4", b.is_down ? "bg-bad/10" : "bg-line/5")}>
+              <div key={b.code} className={cn("rounded-xl p-4", b.is_down ? "bg-bad/10" : "bg-line/5")}>
                 <div className="flex items-center gap-3">
                   <ServerCrash className={cn("h-5 w-5", b.is_down ? "text-bad" : "text-muted")} aria-hidden />
                   <div className="min-w-0 flex-1">
@@ -188,7 +188,7 @@ export default function Admin() {
                     <select
                       value={b.fault ?? ""}
                       onChange={(e) => updateBank(b.code, { fault: (e.target.value || null) as Fault | null })}
-                      className="glass mt-1 h-10 w-full rounded-xl px-2 text-sm text-ink"
+                      className="panel mt-1 h-10 w-full rounded-xl px-2 text-sm text-ink"
                     >
                       {FAULT_OPTIONS.map((f) => (
                         <option key={f.value} value={f.value}>
@@ -207,7 +207,7 @@ export default function Admin() {
                       defaultValue={b.response_delay_seconds}
                       onMouseUp={(e) => updateBank(b.code, { response_delay_seconds: Number((e.target as HTMLInputElement).value) })}
                       onKeyUp={(e) => updateBank(b.code, { response_delay_seconds: Number((e.target as HTMLInputElement).value) })}
-                      className="mt-3 w-full accent-teal"
+                      className="mt-3 w-full accent-primary"
                     />
                   </label>
                 </div>

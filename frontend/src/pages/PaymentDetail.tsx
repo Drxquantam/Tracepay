@@ -27,7 +27,7 @@ function pollDelay(t: Tracker): number | null {
   return null; // settled: nothing more will change on its own
 }
 
-const HEALTH_TEXT: Record<string, string> = { ok: "text-teal", delayed: "text-warn", late: "text-bad", failed: "text-bad" };
+const HEALTH_TEXT: Record<string, string> = { ok: "text-primary", delayed: "text-warn", late: "text-bad", failed: "text-bad" };
 
 export default function PaymentDetail() {
   const { id } = useParams();
@@ -80,7 +80,7 @@ export default function PaymentDetail() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm text-muted">{received ? `From ${p.payer_name}` : `To ${p.payee_name}`}</p>
-          <p className="money text-4xl font-extrabold sm:text-5xl">{formatINR(p.amount_paise)}</p>
+          <p className="money text-4xl font-semibold sm:text-5xl">{formatINR(p.amount_paise)}</p>
           <p className="mt-1 text-sm text-muted">
             {p.note ? `${p.note} · ` : ""}
             {formatDateTime(p.created_at)}
@@ -101,7 +101,7 @@ export default function PaymentDetail() {
             <FlightPath position={t.position} health={t.health} state={p.state} stages={t.stages} summary={`${t.headline}. ${t.detail}`} />
             {/* aria-live: status changes are announced as the payment moves. */}
             <div aria-live="polite" className="mt-2 text-center">
-              <p className={cn("text-lg font-bold", finished ? "text-ok" : HEALTH_TEXT[t.health])}>{t.headline}</p>
+              <p className={cn("text-lg font-semibold", finished ? "text-ok" : HEALTH_TEXT[t.health])}>{t.headline}</p>
               <p className="mx-auto mt-1 max-w-md text-sm text-muted">{t.detail}</p>
             </div>
           </Card>

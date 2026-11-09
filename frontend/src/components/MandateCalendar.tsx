@@ -29,8 +29,8 @@ function entries(mandates: Mandate[]): Entry[] {
 }
 
 const DOT: Record<Entry["kind"], string> = {
-  upcoming: "bg-teal",
-  trial: "bg-violet",
+  upcoming: "bg-primary",
+  trial: "bg-deep",
   paid: "bg-ok",
   failed: "bg-bad",
   retrying: "bg-warn",
@@ -54,11 +54,11 @@ export function MandateCalendar({ mandates, now }: { mandates: Mandate[]; now: D
   return (
     <div>
       <div className="mb-4 flex items-center gap-2">
-        <button onClick={() => setOffset(offset - 1)} className="glass grid h-9 w-9 place-items-center rounded-xl" aria-label="Previous month">
+        <button onClick={() => setOffset(offset - 1)} className="panel grid h-9 w-9 place-items-center rounded-xl" aria-label="Previous month">
           <ChevronLeft className="h-4 w-4" aria-hidden />
         </button>
-        <h3 className="flex-1 text-center font-bold">{monthTitle.format(first)}</h3>
-        <button onClick={() => setOffset(offset + 1)} className="glass grid h-9 w-9 place-items-center rounded-xl" aria-label="Next month">
+        <h3 className="flex-1 text-center font-semibold">{monthTitle.format(first)}</h3>
+        <button onClick={() => setOffset(offset + 1)} className="panel grid h-9 w-9 place-items-center rounded-xl" aria-label="Next month">
           <ChevronRight className="h-4 w-4" aria-hidden />
         </button>
       </div>
@@ -78,7 +78,7 @@ export function MandateCalendar({ mandates, now }: { mandates: Mandate[]; now: D
           return (
             <div
               key={key}
-              className={cn("flex aspect-square flex-col items-center justify-start rounded-xl p-1 text-xs", here.length ? "bg-line/10" : "", key === today && "ring-2 ring-teal/60")}
+              className={cn("flex aspect-square flex-col items-center justify-start rounded-xl p-1 text-xs", here.length ? "bg-line/10" : "", key === today && "ring-2 ring-primary/60")}
               title={label || undefined}
               aria-label={label ? `${i + 1}: ${label}` : undefined}
             >
@@ -95,7 +95,7 @@ export function MandateCalendar({ mandates, now }: { mandates: Mandate[]; now: D
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line/10 pt-4">
         <div>
           <p className="text-xs text-muted">Total for {monthTitle.format(first).split(" ")[0]}</p>
-          <p className="money text-2xl font-extrabold">{formatINR(total)}</p>
+          <p className="money text-2xl font-semibold">{formatINR(total)}</p>
         </div>
         <ul className="flex flex-wrap gap-3 text-xs text-muted">
           {(

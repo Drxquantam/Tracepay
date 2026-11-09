@@ -102,13 +102,13 @@ export default function Pay() {
         {step !== "who" && (
           <button
             onClick={() => setStep(step === "confirm" ? "amount" : "who")}
-            className="glass grid h-10 w-10 place-items-center rounded-xl"
+            className="panel grid h-10 w-10 place-items-center rounded-xl"
             aria-label="Back"
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />
           </button>
         )}
-        <h1 className="text-2xl font-extrabold tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {step === "who" ? "Pay someone" : step === "amount" ? `Pay ${payee?.name}` : "Check and pay"}
         </h1>
       </div>
@@ -139,9 +139,9 @@ export default function Pay() {
             {typedVpa && (
               <button
                 onClick={() => choose({ vpa: query.trim().toLowerCase(), name: query.trim().toLowerCase(), kind: "user", bank_name: "Unknown bank" })}
-                className="glass w-full rounded-2xl p-4 text-left font-semibold hover:shadow-glow"
+                className="panel w-full rounded-xl p-4 text-left font-semibold hover:shadow-glow"
               >
-                Pay UPI ID <span className="text-teal">{query.trim().toLowerCase()}</span>
+                Pay UPI ID <span className="text-primary">{query.trim().toLowerCase()}</span>
               </button>
             )}
             <Card className="p-2 sm:p-2">
@@ -155,8 +155,8 @@ export default function Pay() {
                 <ul>
                   {filtered.map((p) => (
                     <li key={p.vpa}>
-                      <button onClick={() => choose(p)} className="flex w-full items-center gap-3 rounded-2xl p-3 text-left transition hover:bg-line/5">
-                        <span className={cn("grid h-11 w-11 place-items-center rounded-2xl", p.kind === "merchant" ? "bg-violet/15 text-violet" : "bg-teal/15 text-teal")}>
+                      <button onClick={() => choose(p)} className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition hover:bg-line/5">
+                        <span className={cn("grid h-11 w-11 place-items-center rounded-xl", p.kind === "merchant" ? "bg-deep/15 text-deep" : "bg-primary/15 text-primary")}>
                           {p.kind === "merchant" ? <Store className="h-5 w-5" aria-hidden /> : <User className="h-5 w-5" aria-hidden />}
                         </span>
                         <span className="min-w-0">
@@ -182,7 +182,7 @@ export default function Pay() {
                 Amount
               </label>
               <div className="mt-2 flex items-center justify-center gap-1">
-                <span className="text-4xl font-bold text-muted" aria-hidden>
+                <span className="text-4xl font-semibold text-muted" aria-hidden>
                   ₹
                 </span>
                 <input
@@ -192,7 +192,7 @@ export default function Pay() {
                   placeholder="0"
                   value={amountText}
                   onChange={(e) => setAmountText(e.target.value)}
-                  className="money w-full max-w-[14rem] bg-transparent text-center text-5xl font-extrabold outline-none placeholder:text-muted/40"
+                  className="money w-full max-w-[14rem] bg-transparent text-center text-5xl font-semibold outline-none placeholder:text-muted/40"
                   aria-describedby="amount-help"
                 />
               </div>
@@ -201,7 +201,7 @@ export default function Pay() {
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {QUICK_AMOUNTS.map((r) => (
-                  <button key={r} onClick={() => setAmountText(String(r))} className="glass money rounded-full px-4 py-1.5 text-sm font-semibold hover:shadow-glow">
+                  <button key={r} onClick={() => setAmountText(String(r))} className="panel money rounded-full px-4 py-1.5 text-sm font-semibold hover:shadow-glow">
                     ₹{r}
                   </button>
                 ))}
@@ -222,7 +222,7 @@ export default function Pay() {
           <motion.div key="confirm" {...slide} className="space-y-4">
             <Card glow>
               <p className="text-sm text-muted">You're paying</p>
-              <p className="money mt-1 text-4xl font-extrabold">{formatINR(amount)}</p>
+              <p className="money mt-1 text-4xl font-semibold">{formatINR(amount)}</p>
               <dl className="mt-5 space-y-3 text-sm">
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted">To</dt>
@@ -247,7 +247,7 @@ export default function Pay() {
               </dl>
             </Card>
 
-            <details className="glass group rounded-3xl p-4">
+            <details className="panel group rounded-2xl p-4">
               <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold">
                 <FlaskConical className="h-4 w-4 text-warn" aria-hidden />
                 Simulate a problem (demo)
@@ -256,8 +256,8 @@ export default function Pay() {
               <fieldset className="mt-3 space-y-2">
                 <legend className="sr-only">Choose what goes wrong</legend>
                 {FAULTS.map((f) => (
-                  <label key={f.value} className={cn("flex cursor-pointer gap-3 rounded-2xl p-3 transition", fault === f.value ? "bg-teal/10 ring-1 ring-teal/40" : "hover:bg-line/5")}>
-                    <input type="radio" name="fault" value={f.value} checked={fault === f.value} onChange={() => setFault(f.value)} className="mt-1 accent-teal" />
+                  <label key={f.value} className={cn("flex cursor-pointer gap-3 rounded-xl p-3 transition", fault === f.value ? "bg-primary/10 ring-1 ring-primary/40" : "hover:bg-line/5")}>
+                    <input type="radio" name="fault" value={f.value} checked={fault === f.value} onChange={() => setFault(f.value)} className="mt-1 accent-primary" />
                     <span>
                       <span className="block text-sm font-semibold">{f.label}</span>
                       <span className="block text-xs text-muted">{f.hint}</span>
@@ -268,7 +268,7 @@ export default function Pay() {
             </details>
 
             {error && (
-              <div role="alert" className={cn("rounded-2xl px-4 py-3 text-sm", error.retrySafe ? "bg-warn/10 text-warn" : "bg-bad/10 text-bad")}>
+              <div role="alert" className={cn("rounded-xl px-4 py-3 text-sm", error.retrySafe ? "bg-warn/10 text-warn" : "bg-bad/10 text-bad")}>
                 <p className="font-semibold">{error.message}</p>
                 {error.retrySafe && <p className="mt-1">Trying again is safe: it reuses this payment's key, so you can't be charged twice.</p>}
               </div>
