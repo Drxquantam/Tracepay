@@ -3,14 +3,14 @@ deadline sweep. SIMULATION ONLY."""
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.clock import Clock, get_clock
 from app.db import get_db, get_sessionmaker
 from app.deps import require_admin
-from app.disputes import open_overdue_disputes
+from app.jobs import run_due_jobs, start_payments
 from app.models import Bank
 from app.schemas import BankChaosOut, BankChaosUpdate, ResolveRequest
 from app.switch import ResolveError, refund, resolve_stuck
@@ -79,9 +79,12 @@ async def retry_refund(
 
 @router.post("/deadlines/sweep")
 async def sweep_deadlines(
-    db: AsyncSession = Depends(get_db), clock: Clock = Depends(get_clock)
+    background: BackgroundTasks,
+    maker: async_sessionmaker[AsyncSession] = Depends(get_sessionmaker),
+    clock: Clock = Depends(get_clock),
 ) -> dict:
-    """Run the overdue-payment check now, instead of waiting for the background loop."""
-    opened = await open_overdue_disputes(db, await clock.now(db))
-    await db.commit()
-    return {"disputes_opened": len(opened)}
+    """Run the time-based jobs now, instead of waiting for the background loop."""
+    result = await run_due_jobs(maker, clock)
+    if result.payments_to_run:
+        background.add_task(start_payments, maker, clock, result.payments_to_run)
+    return {"disputes_opened": result.disputes_opened, "holds_processed": result.holds_processed}

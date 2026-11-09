@@ -23,12 +23,14 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import guardian_rules
 from app.disputes import mark_resolved
 from app.ledger import SUSPENSE_VPA, get_system_account, lock_accounts, post_transfer
 from app.models import Account, AccountKind, Bank, Payment
 from app.rules import UPI_MAX_PER_TXN_PAISE
 from app.state_machine import (
     MONEY_IN_FLIGHT,
+    InvalidTransition,
     PaymentState,
     note,
     record_created,
@@ -61,11 +63,14 @@ async def accept_payment(
     note: str | None,
     at: datetime,
     fault: str | None = None,
+    guardian_check: bool = True,
 ) -> Payment:
-    """Create a payment and, if the payer can afford it, debit them.
+    """Create a payment and then either decline it, hold it (guardian mode), or debit it.
 
     Business declines (frozen account, not enough balance) still create a payment, in the
     `failed` state, so the user sees what happened in their history, like a real UPI app.
+    guardian_check=False skips guardian rules: used for mandate debits, which the user
+    already authorised when they set up the mandate.
     """
     if amount_paise > UPI_MAX_PER_TXN_PAISE:
         raise PaymentError(422, "Amount is above the per-payment UPI limit")
@@ -84,6 +89,7 @@ async def accept_payment(
     suspense = await get_system_account(db, SUSPENSE_VPA)
     payer_bank = await db.get(Bank, payer.bank_id, populate_existing=True)
     assert payer_bank is not None
+    hold = await guardian_rules.evaluate(db, payer, payee, amount_paise) if guardian_check else None
 
     # The key line for concurrency safety: lock the payer's row *before* reading the
     # balance. A second payment from the same account waits here until we commit, then
@@ -112,34 +118,72 @@ async def accept_payment(
     # deliberately has none).
     await db.flush()
 
-    if payer_bank.is_down:
-        # The payer's own bank is down, so nothing can be debited: a clean decline.
-        _decline(
-            db, payment, at, f"{payer_bank.name} is not responding right now. No money was taken."
-        )
-    elif payer.is_frozen:
-        _decline(db, payment, at, "Your account is frozen, so outgoing payments are paused")
-    elif payer.balance_paise < amount_paise:
-        _decline(db, payment, at, "Not enough balance in your account")
+    decline = _decline_reason(payer, payer_bank, amount_paise)
+    if decline:
+        _decline(db, payment, at, decline)
+    elif hold:
+        guardian_rules.place_hold(db, payment, hold, payer=payer, payee=payee, at=at)
     else:
-        post_transfer(
-            db,
-            from_account=payer,
-            to_account=suspense,
-            amount_paise=amount_paise,
-            at=at,
-            description=f"Debit for payment {payment.reference}",
-            payment_id=payment.id,
-        )
-        transition(db, payment, PaymentState.BANK_DEBITED, at, "Your bank debited your account")
-
+        _debit(db, payment, payer, suspense, at)
     await db.flush()
     return payment
+
+
+def _decline_reason(payer: Account, payer_bank: Bank, amount_paise: int) -> str | None:
+    """Why the payer's bank would refuse right now, or None. Checked on locked rows."""
+    if payer_bank.is_down:
+        return f"{payer_bank.name} is not responding right now. No money was taken."
+    if payer.is_frozen:
+        return "Your account is frozen, so outgoing payments are paused"
+    if payer.balance_paise < amount_paise:
+        return "Not enough balance in your account"
+    return None
 
 
 def _decline(db: AsyncSession, payment: Payment, at: datetime, reason: str) -> None:
     payment.failure_reason = reason
     transition(db, payment, PaymentState.FAILED, at, reason)
+
+
+def _debit(
+    db: AsyncSession, payment: Payment, payer: Account, suspense: Account, at: datetime
+) -> None:
+    """Payer → suspense. Both accounts must already be locked."""
+    post_transfer(
+        db,
+        from_account=payer,
+        to_account=suspense,
+        amount_paise=payment.amount_paise,
+        at=at,
+        description=f"Debit for payment {payment.reference}",
+        payment_id=payment.id,
+    )
+    transition(db, payment, PaymentState.BANK_DEBITED, at, "Your bank debited your account")
+
+
+async def release_held(db: AsyncSession, payment_id: uuid.UUID, at: datetime) -> Payment:
+    """A held payment is approved (or its cooling-off ends): try the debit now.
+
+    Everything is checked again on freshly locked rows, because a lot can change while a
+    payment waits: the balance, the bank, or someone pressing the kill switch.
+    """
+    payment = await lock_payment(db, payment_id)
+    if payment.state != PaymentState.HELD:
+        raise InvalidTransition(f"Payment {payment.reference} is {payment.state}, not held")
+    payer = await db.get(Account, payment.payer_account_id)
+    assert payer is not None
+    payer_bank = await db.get(Bank, payer.bank_id, populate_existing=True)
+    assert payer_bank is not None
+    suspense = await get_system_account(db, SUSPENSE_VPA)
+    locked = await lock_accounts(db, [payer.id, suspense.id])
+    payer, suspense = locked[payer.id], locked[suspense.id]
+
+    decline = _decline_reason(payer, payer_bank, payment.amount_paise)
+    if decline:
+        _decline(db, payment, at, decline)
+    else:
+        _debit(db, payment, payer, suspense, at)
+    return payment
 
 
 async def lock_payment(db: AsyncSession, payment_id: uuid.UUID) -> Payment:

@@ -22,6 +22,7 @@ export type Me = {
 
 export type PaymentState =
   | "initiated"
+  | "held"
   | "bank_debited"
   | "in_switch"
   | "credited"
@@ -99,6 +100,7 @@ export type Tracker = {
   breached: boolean;
   days_late: number;
   dispute: Dispute | null;
+  hold: { id: number; kind: "approval" | "cooling_off"; status: string; reasons: string; due_at: string; guardian_name: string | null } | null;
   sim_now: string;
 };
 
@@ -110,3 +112,44 @@ export type Fault =
   | "debited_not_credited"
   | "duplicate_callback"
   | "bank_down";
+
+export type Person = { username: string; full_name: string };
+
+export type GuardianOverview = {
+  rules: {
+    guardian: Person | null;
+    threshold_paise: number | null;
+    new_payee_approval: boolean;
+    cooling_off_threshold_paise: number | null;
+    cooling_off_minutes: number;
+  };
+  is_frozen: boolean;
+  protecting: (Person & { is_frozen: boolean; pending_requests: number })[];
+  candidates: Person[];
+};
+
+export type Hold = {
+  id: number;
+  payment_id: string;
+  kind: "approval" | "cooling_off";
+  status: string;
+  reasons: string;
+  created_at: string;
+  due_at: string;
+  payer_name: string;
+  payee_name: string;
+  amount_paise: number;
+  guardian_name: string | null;
+};
+
+export type Holds = { to_decide: Hold[]; mine: Hold[] };
+
+export type Notification = {
+  id: number;
+  kind: string;
+  title: string;
+  body: string;
+  link: string | null;
+  created_at: string;
+  read_at: string | null;
+};

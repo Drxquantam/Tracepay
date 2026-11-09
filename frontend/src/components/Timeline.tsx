@@ -9,6 +9,7 @@ function tone(e: PaymentEvent): string {
   if (e.kind === "dispute") return "bg-violet";
   if (e.kind === "note") return "bg-warn";
   if (e.to_state === "failed") return "bg-bad";
+  if (e.to_state === "held") return "bg-warn";
   if (e.to_state === "credited" || e.to_state === "reversed") return "bg-ok";
   return "bg-teal";
 }

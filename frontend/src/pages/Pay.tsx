@@ -82,7 +82,9 @@ export default function Pay() {
         headers: { "Idempotency-Key": key },
         body: { payee_vpa: payee.vpa, amount_paise: amount, note: note.trim() || null, simulate_fault: fault || null },
       });
-      toast(payment.state === "failed" ? payment.failure_reason ?? "Payment failed" : "Payment sent. Tracking it now.", payment.state === "failed" ? "error" : "success");
+      if (payment.state === "failed") toast(payment.failure_reason ?? "Payment failed", "error");
+      else if (payment.state === "held") toast("Guardian mode is holding this payment. No money has left yet.", "info");
+      else toast("Payment sent. Tracking it now.", "success");
       navigate(`/payments/${payment.id}`);
     } catch (e) {
       const err = e instanceof ApiError ? e : new ApiError(0, String(e));

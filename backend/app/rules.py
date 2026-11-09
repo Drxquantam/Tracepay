@@ -62,3 +62,10 @@ SLOW_RESPONSE_SECONDS = 8.0
 
 # How often the background job checks for payments that have missed their deadline.
 DEADLINE_SWEEP_INTERVAL_SECONDS = 15
+
+# --- Guardian mode (simulation knobs, not regulations) ---
+
+# A payment waiting for the trusted person's approval fails if nobody decides in time.
+APPROVAL_EXPIRES_AFTER_MINUTES = 60
+# Default cooling-off period for large payments, if the user doesn't choose one.
+DEFAULT_COOLING_OFF_MINUTES = 30

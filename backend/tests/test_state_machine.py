@@ -31,6 +31,9 @@ def _payment(state: PaymentState) -> Payment:
 VALID = [
     (S.INITIATED, S.BANK_DEBITED),
     (S.INITIATED, S.FAILED),
+    (S.INITIATED, S.HELD),
+    (S.HELD, S.BANK_DEBITED),
+    (S.HELD, S.FAILED),
     (S.BANK_DEBITED, S.IN_SWITCH),
     (S.BANK_DEBITED, S.FAILED),
     (S.IN_SWITCH, S.CREDITED),

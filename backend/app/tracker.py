@@ -9,15 +9,18 @@ from datetime import datetime
 
 from app.deadlines import days_late, deadline_for, rule_for
 from app.disputes import dispute_view
-from app.models import Dispute, Payment
+from app.models import Dispute, Payment, PaymentHold
 from app.money import format_inr
+from app.rules import IST
 from app.state_machine import MONEY_IN_FLIGHT, PaymentState
 
 S = PaymentState
 RESOLVED = (S.CREDITED, S.REVERSED)
 
 
-def tracker_view(p: Payment, dispute: Dispute | None, now: datetime) -> dict:
+def tracker_view(
+    p: Payment, dispute: Dispute | None, now: datetime, hold: PaymentHold | None = None
+) -> dict:
     """`p` must have payer_account.bank, payee_account.bank and events loaded."""
     state = PaymentState(p.state)
     payer_bank, payee_bank = p.payer_account.bank.name, p.payee_account.bank.name
@@ -36,7 +39,23 @@ def tracker_view(p: Payment, dispute: Dispute | None, now: datetime) -> dict:
     breached = deadline is not None and measured > deadline
     late = days_late(deadline, measured) if deadline else 0
 
-    if state == S.INITIATED:
+    if state == S.HELD and hold is not None:
+        when = hold.due_at.astimezone(IST).strftime("%I:%M %p").lstrip("0")
+        guardian = hold.guardian.full_name if hold.guardian else "your trusted person"
+        position, health = "payer_bank", "delayed"
+        if hold.kind == "approval":
+            headline = f"Waiting for {guardian}'s approval"
+            detail = (
+                f"{hold.reasons}. No money has left your account. If it isn't "
+                f"approved by {when}, it will be cancelled."
+            )
+        else:
+            headline = "Cooling-off pause"
+            detail = (
+                f"{hold.reasons}. No money has left your account yet. It sends at "
+                f"{when} unless you cancel it."
+            )
+    elif state == S.INITIATED:
         position, health, headline = "payer_bank", "ok", "Waiting for your bank"
         detail = "Your payment request has been received."
     elif state == S.FAILED:
@@ -95,5 +114,17 @@ def tracker_view(p: Payment, dispute: Dispute | None, now: datetime) -> dict:
         "breached": breached,
         "days_late": late,
         "dispute": dispute_view(dispute, now) if dispute else None,
+        "hold": (
+            {
+                "id": hold.id,
+                "kind": hold.kind,
+                "status": hold.status,
+                "reasons": hold.reasons,
+                "due_at": hold.due_at,
+                "guardian_name": hold.guardian.full_name if hold.guardian else None,
+            }
+            if hold
+            else None
+        ),
         "sim_now": now,
     }

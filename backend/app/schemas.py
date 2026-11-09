@@ -131,6 +131,15 @@ class RuleOut(BaseModel):
     compensation_paise_per_day: int
 
 
+class HoldInfo(BaseModel):
+    id: int
+    kind: Literal["approval", "cooling_off"]
+    status: str
+    reasons: str
+    due_at: datetime
+    guardian_name: str | None
+
+
 class TrackerOut(BaseModel):
     payment: PaymentDetailOut
     stages: list[StageOut]
@@ -144,6 +153,7 @@ class TrackerOut(BaseModel):
     breached: bool
     days_late: int
     dispute: DisputeOut | None
+    hold: HoldInfo | None = None
     sim_now: datetime
 
 
@@ -177,3 +187,84 @@ class PayeeOut(BaseModel):
     name: str
     kind: str
     bank_name: str
+
+
+class MeUpdate(BaseModel):
+    senior_mode: bool
+
+
+class PersonOut(BaseModel):
+    username: str
+    full_name: str
+
+
+class GuardianRulesIn(BaseModel):
+    """Set guardian_username to null to switch guardian mode off."""
+
+    guardian_username: str | None
+    threshold_paise: int | None = Field(default=None, gt=0)
+    new_payee_approval: bool = False
+    cooling_off_threshold_paise: int | None = Field(default=None, gt=0)
+    cooling_off_minutes: int = Field(default=30, ge=1, le=24 * 60)
+
+
+class GuardianRulesOut(BaseModel):
+    guardian: PersonOut | None
+    threshold_paise: int | None
+    new_payee_approval: bool
+    cooling_off_threshold_paise: int | None
+    cooling_off_minutes: int
+
+
+class ProtectedPersonOut(PersonOut):
+    is_frozen: bool
+    pending_requests: int
+
+
+class GuardianOverview(BaseModel):
+    rules: GuardianRulesOut
+    is_frozen: bool
+    protecting: list[ProtectedPersonOut]  # people who chose me as their trusted person
+    candidates: list[PersonOut]  # people I could choose as my trusted person
+
+
+class HoldOut(BaseModel):
+    id: int
+    payment_id: uuid.UUID
+    kind: Literal["approval", "cooling_off"]
+    status: str
+    reasons: str
+    created_at: datetime
+    due_at: datetime
+    payer_name: str
+    payee_name: str
+    amount_paise: int
+    guardian_name: str | None
+
+
+class HoldsOut(BaseModel):
+    to_decide: list[HoldOut]  # waiting on me, as someone's trusted person
+    mine: list[HoldOut]  # my own payments that are held
+
+
+class FreezeRequest(BaseModel):
+    """Leave username empty to act on your own account."""
+
+    username: str | None = None
+
+
+class NotificationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    kind: str
+    title: str
+    body: str
+    link: str | None
+    created_at: datetime
+    read_at: datetime | None
+
+
+class NotificationsOut(BaseModel):
+    unread: int
+    items: list[NotificationOut]

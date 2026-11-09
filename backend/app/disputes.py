@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 from app.deadlines import compensation_paise, days_late, deadline_for, rule_for
 from app.models import Account, Dispute, DisputeStep, Payment, PaymentEvent
 from app.money import format_inr
+from app.notifications import notify
 from app.rules import IST, OMBUDSMAN_WAIT_DAYS
 from app.state_machine import MONEY_IN_FLIGHT, note
 
@@ -100,6 +101,19 @@ async def open_overdue_disputes(db: AsyncSession, now: datetime) -> list[Dispute
             f"owes you {format_inr(rule.compensation_paise_per_day)} for every day of delay.",
             kind="dispute",
         )
+        if payment.payer_account.user_id is not None:
+            notify(
+                db,
+                payment.payer_account.user_id,
+                kind="dispute",
+                at=now,
+                link=f"/payments/{payment.id}",
+                title=f"{bank.name} missed the deadline for your "
+                f"{format_inr(payment.amount_paise)} payment",
+                body=f"We opened a dispute for you. {bank.name} owes you "
+                f"{format_inr(rule.compensation_paise_per_day)} for every day of delay, "
+                "and the claim summary is ready to send.",
+            )
         opened.append(dispute)
     await db.flush()
     return opened

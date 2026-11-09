@@ -1,8 +1,12 @@
 """Payment state machine.
 
     initiated ─► bank_debited ─► in_switch ─► credited
-        │             │              │
+        │  ▲          │              │
+        │  └── held   │              │      (held can also go straight to failed)
         └─────────────┴──────────────┴──► failed ─► reversal_pending ─► reversed
+
+`held` (guardian mode) comes *before* the debit: the payment waits for the trusted
+person's approval or a cooling-off period, and no money has moved yet.
 
 `failed` straight from `initiated` means no money moved (e.g. insufficient balance), so
 nothing needs reversing. Failing after the debit means the payer's money is stuck in
@@ -23,6 +27,7 @@ from app.models import Payment, PaymentEvent
 
 class PaymentState(StrEnum):
     INITIATED = "initiated"
+    HELD = "held"
     BANK_DEBITED = "bank_debited"
     IN_SWITCH = "in_switch"
     CREDITED = "credited"
@@ -33,7 +38,8 @@ class PaymentState(StrEnum):
 
 S = PaymentState
 ALLOWED: dict[PaymentState, frozenset[PaymentState]] = {
-    S.INITIATED: frozenset({S.BANK_DEBITED, S.FAILED}),
+    S.INITIATED: frozenset({S.BANK_DEBITED, S.FAILED, S.HELD}),
+    S.HELD: frozenset({S.BANK_DEBITED, S.FAILED}),  # released, or denied/expired/cancelled
     S.BANK_DEBITED: frozenset({S.IN_SWITCH, S.FAILED}),
     S.IN_SWITCH: frozenset({S.CREDITED, S.FAILED}),
     S.FAILED: frozenset({S.REVERSAL_PENDING}),

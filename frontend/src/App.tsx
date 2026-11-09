@@ -6,8 +6,10 @@ import { ToastProvider } from "./components/Toast";
 import { Skeleton } from "./components/ui";
 import { AuthProvider, useAuth } from "./lib/auth";
 import Disputes from "./pages/Disputes";
+import Guardian from "./pages/Guardian";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
+import Notifications from "./pages/Notifications";
 import Pay from "./pages/Pay";
 import PaymentDetail from "./pages/PaymentDetail";
 
@@ -37,6 +39,8 @@ export default function App() {
               <Route path="pay" element={<Pay />} />
               <Route path="payments/:id" element={<PaymentDetail />} />
               <Route path="disputes" element={<Disputes />} />
+              <Route path="guardian" element={<Guardian />} />
+              <Route path="notifications" element={<Notifications />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

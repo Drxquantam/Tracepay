@@ -5,12 +5,13 @@ import { motion } from "framer-motion";
 import { ArrowRight, Inbox, PlaneTakeoff, Scale, Send, ShieldCheck, Snowflake } from "lucide-react";
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { HoldCard } from "../components/HoldCard";
 import { PaymentRow } from "../components/PaymentRow";
 import { SpendChart } from "../components/SpendChart";
 import { AnimatedAmount, Button, Card, EmptyState, SectionTitle, Skeleton } from "../components/ui";
 import { useAuth } from "../lib/auth";
 import { formatDateTime, formatINR } from "../lib/format";
-import type { Dispute, Payment } from "../lib/types";
+import type { Dispute, Holds, Payment } from "../lib/types";
 import { useApi } from "../lib/useApi";
 
 const IN_FLIGHT = new Set(["bank_debited", "in_switch", "reversal_pending"]);
@@ -26,6 +27,7 @@ export default function Home() {
   const payments = useApi<Payment[]>("/payments", (list) => (list.some((p) => IN_FLIGHT.has(p.state)) ? 3000 : 15000));
   const disputes = useApi<Dispute[]>("/disputes", 15000);
   const clock = useApi<{ now: string }>("/clock");
+  const holds = useApi<Holds>(me?.role === "admin" ? null : "/guardian/holds", 5000);
 
   // Keep the balance fresh whenever the payment list changes.
   useEffect(() => {
@@ -89,6 +91,18 @@ export default function Home() {
           )}
         </Card>
       </div>
+
+      {/* Requests waiting on this person come first: they're time-limited. */}
+      {holds.data && (holds.data.to_decide.length > 0 || holds.data.mine.length > 0) && (
+        <section aria-label="Payments on hold" className="grid gap-3 md:grid-cols-2">
+          {holds.data.to_decide.map((h) => (
+            <HoldCard key={h.id} hold={h} as="guardian" onDone={() => { holds.reload(); payments.reload(); }} />
+          ))}
+          {holds.data.mine.map((h) => (
+            <HoldCard key={h.id} hold={h} as="payer" onDone={() => { holds.reload(); payments.reload(); }} />
+          ))}
+        </section>
+      )}
 
       {/* Alerts: plain language, most urgent first */}
       {(openDisputes.length > 0 || inFlight.length > 0) && (

@@ -221,6 +221,64 @@ class DisputeStep(Base):
     dispute: Mapped[Dispute] = relationship(back_populates="steps")
 
 
+class GuardianSettings(Base):
+    """A user's guardian-mode rules and their trusted person. One row per protected user."""
+
+    __tablename__ = "guardian_settings"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    guardian_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    # Payments of this amount or more need the trusted person's approval (None = off).
+    threshold_paise: Mapped[int | None] = mapped_column(BigInteger)
+    # The first-ever payment to someone needs approval (a common pattern in scams).
+    new_payee_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Payments of this amount or more wait out a cooling-off period first (None = off).
+    cooling_off_threshold_paise: Mapped[int | None] = mapped_column(BigInteger)
+    cooling_off_minutes: Mapped[int] = mapped_column(Integer, default=30)
+
+    guardian: Mapped[User | None] = relationship(foreign_keys=[guardian_user_id])
+
+
+class PaymentHold(Base):
+    """Why a payment is held, and what happened to the hold.
+
+    kind="approval":    waits for the trusted person; at `due_at` it expires (payment fails).
+    kind="cooling_off": waits until `due_at`, then is released automatically, unless the
+                        user or the trusted person cancels it first.
+    """
+
+    __tablename__ = "payment_holds"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    payment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("payments.id"), unique=True)
+    kind: Mapped[str] = mapped_column(String(20))
+    reasons: Mapped[str] = mapped_column(String(400))  # plain language, "; "-separated
+    guardian_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
+    # pending | approved | denied | expired | released | cancelled
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # simulated time
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # simulated time
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    payment: Mapped[Payment] = relationship()
+    guardian: Mapped[User | None] = relationship()
+
+
+class Notification(Base):
+    """In-app notification centre (the simulation's stand-in for SMS and push)."""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(30))  # e.g. "approval_request", "dispute"
+    title: Mapped[str] = mapped_column(String(160))
+    body: Mapped[str] = mapped_column(String(400))
+    link: Mapped[str | None] = mapped_column(String(200))  # a path in the web app
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # simulated time
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class IdempotencyKey(Base):
     """Remembers the result of a request made with an `Idempotency-Key` header.
 

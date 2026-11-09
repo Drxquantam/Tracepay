@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.db import get_db
 from app.deps import get_current_user
 from app.models import Account, User
-from app.schemas import AccountOut, LoginRequest, MeOut, TokenResponse
+from app.schemas import AccountOut, LoginRequest, MeOut, MeUpdate, TokenResponse
 from app.security import create_access_token, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -54,3 +54,13 @@ async def me(user: User = Depends(get_current_user), db: AsyncSession = Depends(
             for a in accounts
         ],
     )
+
+
+@router.patch("/me", response_model=MeOut)
+async def update_me(
+    body: MeUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+) -> MeOut:
+    """Preferences. Senior mode: larger text and simpler wording in the app."""
+    user.senior_mode = body.senior_mode
+    await db.commit()
+    return await me(user, db)

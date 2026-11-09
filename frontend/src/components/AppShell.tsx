@@ -2,17 +2,23 @@
 // on phones (like a real payments app), and a fade/slide transition between pages.
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Home, LogOut, Moon, Scale, Send, Sun } from "lucide-react";
-import { NavLink, useLocation, useOutlet } from "react-router-dom";
+import { Bell, Home, LogOut, Moon, Scale, Send, Shield, Sun, Type } from "lucide-react";
+import { useEffect } from "react";
+import { Link, NavLink, useLocation, useOutlet } from "react-router-dom";
+import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useTheme } from "../lib/theme";
+import { useApi } from "../lib/useApi";
+import { useToast } from "./Toast";
 import { cn, SimulationBadge } from "./ui";
 
-const NAV = [
+const CUSTOMER_NAV = [
   { to: "/", label: "Home", icon: Home },
   { to: "/pay", label: "Pay", icon: Send },
+  { to: "/guardian", label: "Guardian", icon: Shield },
   { to: "/disputes", label: "Disputes", icon: Scale },
 ];
+const ADMIN_NAV = [{ to: "/", label: "Home", icon: Home }];
 
 export function Logo({ className }: { className?: string }) {
   return (
@@ -28,8 +34,23 @@ export function Logo({ className }: { className?: string }) {
 }
 
 export function AppShell() {
-  const { me, logout } = useAuth();
+  const { me, logout, refreshMe } = useAuth();
   const { theme, toggle } = useTheme();
+  const toast = useToast();
+  const NAV = me?.role === "admin" ? ADMIN_NAV : CUSTOMER_NAV;
+  const notes = useApi<{ unread: number }>("/notifications", 10000);
+
+  // Senior mode scales the whole UI (rem-based) via a class on <html>.
+  const senior = !!me?.senior_mode;
+  useEffect(() => {
+    document.documentElement.classList.toggle("senior", senior);
+  }, [senior]);
+
+  async function toggleSenior() {
+    await api("/auth/me", { method: "PATCH", body: { senior_mode: !senior } });
+    await refreshMe();
+    toast(senior ? "Standard text size" : "Senior mode on: larger text", "success");
+  }
   const location = useLocation();
   const outlet = useOutlet();
   const reduce = useReducedMotion();
@@ -69,6 +90,26 @@ export function AppShell() {
             <SimulationBadge className="hidden sm:inline-flex lg:ml-0" />
             <div className="ml-auto flex items-center gap-2">
               <span className="hidden text-sm text-muted sm:block">{me?.full_name}</span>
+              <Link
+                to="/notifications"
+                className="glass relative grid h-10 w-10 place-items-center rounded-xl"
+                aria-label={`Notifications${notes.data?.unread ? `, ${notes.data.unread} unread` : ""}`}
+              >
+                <Bell className="h-5 w-5" aria-hidden />
+                {!!notes.data?.unread && (
+                  <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-bad px-1 text-[11px] font-bold text-white">
+                    {notes.data.unread}
+                  </span>
+                )}
+              </Link>
+              <button
+                onClick={toggleSenior}
+                className={cn("glass grid h-10 w-10 place-items-center rounded-xl", senior && "ring-2 ring-teal/60")}
+                aria-label={senior ? "Turn off senior mode (larger text)" : "Turn on senior mode (larger text)"}
+                aria-pressed={senior}
+              >
+                <Type className="h-5 w-5" aria-hidden />
+              </button>
               <button onClick={toggle} className="glass grid h-10 w-10 place-items-center rounded-xl" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
                 {theme === "dark" ? <Sun className="h-5 w-5" aria-hidden /> : <Moon className="h-5 w-5" aria-hidden />}
               </button>

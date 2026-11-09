@@ -99,6 +99,7 @@ export function SimulationBadge({ className }: { className?: string }) {
 
 const STATE_TONE: Record<PaymentState, string> = {
   initiated: "bg-line/10 text-muted",
+  held: "bg-warn/15 text-warn",
   bank_debited: "bg-teal/15 text-teal",
   in_switch: "bg-teal/15 text-teal",
   credited: "bg-ok/15 text-ok",

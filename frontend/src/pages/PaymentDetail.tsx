@@ -3,7 +3,7 @@
 // Polls the tracker: quickly while the money is moving, slowly while it's stuck, and
 // stops once everything is settled.
 
-import { ArrowLeft, Copy, Hourglass } from "lucide-react";
+import { ArrowLeft, Copy, Hourglass, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { CountdownRing } from "../components/CountdownRing";
@@ -11,7 +11,8 @@ import { DisputeCard } from "../components/DisputeCard";
 import { FlightPath } from "../components/FlightPath";
 import { Timeline } from "../components/Timeline";
 import { useToast } from "../components/Toast";
-import { Card, cn, EmptyState, SectionTitle, Skeleton, StateBadge } from "../components/ui";
+import { Button, Card, cn, EmptyState, SectionTitle, Skeleton, StateBadge } from "../components/ui";
+import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { formatDateTime, formatINR } from "../lib/format";
 import type { Tracker } from "../lib/types";
@@ -21,6 +22,7 @@ function pollDelay(t: Tracker): number | null {
   const s = t.payment.state;
   if ((s === "bank_debited" || s === "in_switch") && t.health === "ok") return 1500; // moving
   if (s === "bank_debited" || s === "in_switch" || s === "reversal_pending") return 5000; // stuck
+  if (s === "held") return 3000;
   if (t.dispute?.status === "open") return 5000;
   return null; // settled: nothing more will change on its own
 }
@@ -130,6 +132,35 @@ export default function PaymentDetail() {
                   </p>
                 </div>
               </div>
+            </Card>
+          )}
+          {t.hold && t.hold.status === "pending" && p.state === "held" && (
+            <Card className="border-warn/30">
+              <div className="flex items-center gap-2 text-sm font-semibold text-warn">
+                <ShieldAlert className="h-4 w-4" aria-hidden />
+                {t.hold.kind === "approval" ? "Guardian check" : "Cooling-off pause"}
+              </div>
+              <p className="mt-2 text-sm">{t.hold.reasons}.</p>
+              <p className="mt-1 text-xs text-muted">
+                {t.hold.kind === "approval" ? `Cancelled automatically if not approved by ${formatDateTime(t.hold.due_at)}.` : `Sends at ${formatDateTime(t.hold.due_at)}.`}
+              </p>
+              {!received && (
+                <Button
+                  variant="ghost"
+                  className="mt-4 w-full"
+                  onClick={async () => {
+                    try {
+                      await api(`/guardian/holds/${t.hold!.id}/cancel`, { method: "POST" });
+                      toast("Payment cancelled. No money moved.", "success");
+                      reload();
+                    } catch (e) {
+                      toast(e instanceof ApiError ? e.message : "Couldn't cancel", "error");
+                    }
+                  }}
+                >
+                  Cancel this payment
+                </Button>
+              )}
             </Card>
           )}
           {t.dispute && <DisputeCard dispute={t.dispute} simNow={t.sim_now} onChange={reload} />}

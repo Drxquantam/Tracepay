@@ -13,7 +13,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import payments
 from app.db import SessionLocal
 from app.ledger import OPENING_BALANCE_VPA, SUSPENSE_VPA, lock_accounts, post_transfer
-from app.models import Account, AccountKind, Bank, BankProfile, SimClock, User, UserRole
+from app.models import (
+    Account,
+    AccountKind,
+    Bank,
+    BankProfile,
+    GuardianSettings,
+    SimClock,
+    User,
+    UserRole,
+)
 from app.security import hash_password
 
 DEMO_PASSWORD = "demo1234"
@@ -135,6 +144,19 @@ async def seed_demo_data(db: AsyncSession) -> bool:
         )
 
     await _seed_past_payments(db, now, aarav, shanti)
+
+    # Guardian mode: Shanti (who also uses senior mode) chose her grandson Aarav as her
+    # trusted person. Big or first-time payments need his OK; very large ones also pause.
+    db.add(
+        GuardianSettings(
+            user_id=shanti.id,
+            guardian_user_id=aarav.id,
+            threshold_paise=rupees(10_000),
+            new_payee_approval=True,
+            cooling_off_threshold_paise=rupees(25_000),
+            cooling_off_minutes=30,
+        )
+    )
 
     await db.commit()
     return True

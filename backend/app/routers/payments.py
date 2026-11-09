@@ -11,7 +11,7 @@ from app.clock import Clock, get_clock
 from app.db import get_db, get_sessionmaker
 from app.deps import get_current_user
 from app.idempotency import claim_key, hash_request, save_response
-from app.models import Account, Dispute, Payment, User, UserRole
+from app.models import Account, Dispute, Payment, PaymentHold, User, UserRole
 from app.payments import PaymentError, accept_payment
 from app.schemas import (
     PaymentCreate,
@@ -188,5 +188,10 @@ async def track_payment(
             selectinload(Dispute.payment),
         )
     )
-    view = tracker_view(payment, dispute, await clock.now(db))
+    hold = await db.scalar(
+        select(PaymentHold)
+        .where(PaymentHold.payment_id == payment.id)
+        .options(selectinload(PaymentHold.guardian))
+    )
+    view = tracker_view(payment, dispute, await clock.now(db), hold)
     return TrackerOut(payment=detail_out(payment), **view)

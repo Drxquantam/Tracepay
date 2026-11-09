@@ -11,24 +11,38 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.clock import get_clock
 from app.config import settings
 from app.db import SessionLocal
-from app.disputes import open_overdue_disputes
-from app.routers import admin, auth, chaos, clock, disputes, health, payees, payments
+from app.jobs import run_due_jobs, start_payments
+from app.routers import (
+    admin,
+    auth,
+    chaos,
+    clock,
+    disputes,
+    guardian,
+    health,
+    notifications,
+    payees,
+    payments,
+)
 from app.rules import DEADLINE_SWEEP_INTERVAL_SECONDS
 
 log = logging.getLogger("tracepay")
 
 
 async def deadline_sweep_loop() -> None:
-    """Every few seconds, open disputes for payments stuck past their deadline. Payments
-    stranded by a server restart mid-flight get caught here too."""
+    """Every few seconds, run everything that happens because time passed: expire or
+    release held payments, and open disputes for payments stuck past their deadline
+    (including any stranded by a server restart mid-flight)."""
     while True:
         await asyncio.sleep(DEADLINE_SWEEP_INTERVAL_SECONDS)
         try:
-            async with SessionLocal() as db:
-                opened = await open_overdue_disputes(db, await get_clock().now(db))
-                await db.commit()
-            if opened:
-                log.info("Deadline sweep opened %d dispute(s)", len(opened))
+            result = await run_due_jobs(SessionLocal, get_clock())
+            if result.payments_to_run:
+                asyncio.create_task(
+                    start_payments(SessionLocal, get_clock(), result.payments_to_run)
+                )
+            if result.disputes_opened:
+                log.info("Deadline sweep opened %d dispute(s)", result.disputes_opened)
         except Exception:  # keep the loop alive; one bad run shouldn't stop future checks
             log.exception("Deadline sweep failed")
 
@@ -56,5 +70,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for module in (health, auth, payees, payments, disputes, clock, admin, chaos):
+for module in (
+    health,
+    auth,
+    payees,
+    payments,
+    disputes,
+    guardian,
+    notifications,
+    clock,
+    admin,
+    chaos,
+):
     app.include_router(module.router)

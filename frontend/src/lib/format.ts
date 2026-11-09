@@ -51,6 +51,7 @@ export function formatDuration(totalSeconds: number): string {
 
 export const STATE_LABEL: Record<string, string> = {
   initiated: "Started",
+  held: "On hold",
   bank_debited: "Debited",
   in_switch: "In transit",
   credited: "Completed",
