@@ -20,7 +20,7 @@ pytestmark = pytest.mark.usefixtures("seeded")
 
 H = 3600
 DAY = 24 * H
-AARAV = "aarav@jhatpat"
+AARAV = "aarav@swissbank"
 DUE = FROZEN_NOW + timedelta(days=2)
 
 

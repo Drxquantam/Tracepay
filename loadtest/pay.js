@@ -42,7 +42,7 @@ export const options = {
 const RING = [
   ["aarav", "ravistore@suraksha"],
   ["ravi", "shanti@suraksha"],
-  ["shanti", "aarav@jhatpat"],
+  ["shanti", "aarav@swissbank"],
 ];
 
 export function setup() {

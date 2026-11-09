@@ -16,9 +16,9 @@ works out the compensation your bank owes you.
 |---|---|---|
 | ![Home](docs/screenshots/home.jpg) | ![Guardian](docs/screenshots/guardian.jpg) | ![Mandates](docs/screenshots/mandates.jpg) |
 
-| TracePay Black card (3D, tilt and flip) | Card back | Login |
-|---|---|---|
-| ![Card front](docs/screenshots/card-front.jpg) | ![Card back](docs/screenshots/card-back.jpg) | ![Login](docs/screenshots/login.jpg) |
+| TracePay Black · V12 Limited Edition (3D tilt and flip) | Login |
+|---|---|
+| ![TracePay Black card](docs/screenshots/card-front.jpg) | ![Login](docs/screenshots/login.jpg) |
 
 | Admin panel |
 |---|
@@ -62,7 +62,7 @@ After frontend dependencies change, also renew the web container's `node_modules
 
 | Username | Who | Bank | Notes |
 |---|---|---|---|
-| `aarav` | Aarav Mehta, college student | Jhatpat Bank (flaky, slow) | Two mandates (one ₹1 trial → ₹499) |
+| `aarav` | Aarav Mehta, college student | SwissBank (flaky, slow) | Two mandates (one ₹1 trial → ₹499) |
 | `shanti` | Shanti Mehta, his grandmother | Suraksha Bank (reliable) | Senior mode on; guardian mode on, with Aarav as her trusted person |
 | `ravi` | Ravi Kumar, Ravi General Store | Suraksha Bank | Merchant |
 | `admin` | Demo admin | none | Chaos controls, time travel, demo story |
@@ -78,13 +78,13 @@ make demo    # or: docker compose exec api python scripts/demo.py
 1. Aarav pays Ravi General Store ₹450. Ravi's bank (Suraksha) is slow to answer.
 2. While the payment is in flight, the demo **kills Suraksha Bank**.
 3. When the switch tries to credit Ravi, the bank is down. The tracker shows the truth:
-   *"Your money is stuck between banks. ₹450 left your Jhatpat Bank account, but
+   *"Your money is stuck between banks. ₹450 left your SwissBank account, but
    Suraksha Bank hasn't confirmed it reached Ravi General Store."* The dot pauses at the
    switch and turns amber. The money sits visibly in the suspense account.
 4. The simulated clock **jumps 8 days**, past the T+5 merchant deadline.
 5. With **no manual action**, the system opens a dispute, writes it to the event log,
    notifies Aarav and shows: **"Your bank is 3 days late: ₹300 owed. This compensation is
-   owed by Jhatpat Bank, your bank, not by Ravi General Store."** A ready-to-send claim
+   owed by SwissBank, your bank, not by Ravi General Store."** A ready-to-send claim
    summary with every reference is one click away.
 
 Afterwards: Admin panel → **Heal all** and Time travel → **Reset**.
@@ -119,9 +119,12 @@ Afterwards: Admin panel → **Heal all** and Time travel → **Reset**.
   Geist for text, Geist Mono for labels and references, tabular figures for money.
 - Money motif: a *guilloché*, the engraved line pattern on banknotes, generated in code
   from hypotrochoid curves and slowly rotating on the login screen and the balance card.
-- **TracePay Black**: an interactive 3D metal card. It tilts toward the pointer, a
-  holographic light follows it, and it flips on click or Enter. It deliberately has no
-  card number, expiry or CVV; the back says it's a simulation, not a payment card.
+- **TracePay Black · V12 Limited Edition**: an interactive 3D card styled like a
+  carbon-fibre hypercar (an original shaded bronze-gold car drawn in SVG, no real car brand's name or logo): gold
+  detailing, a numbered "Nº 007 / 100" edition, spinning Y-spoke wheels, and the
+  cardholder's name in shining gold. It tilts toward the pointer, a reflection follows
+  it, and it flips on click or Enter. It deliberately has no card number, expiry or CVV;
+  the back says it's a simulation, not a payment card.
 
 **3. Mandate Manager**
 - Every recurring debit in one place: next date, amount, cap, trial-to-paid flag, recent

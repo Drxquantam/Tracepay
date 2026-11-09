@@ -68,7 +68,7 @@ async def test_seed_is_idempotent(db: AsyncSession) -> None:
 
 async def test_database_refuses_negative_user_balance(db: AsyncSession) -> None:
     """The CHECK constraint is a safety net under the application's own checks."""
-    acc = await db.scalar(select(Account).where(Account.vpa == "aarav@jhatpat"))
+    acc = await db.scalar(select(Account).where(Account.vpa == "aarav@swissbank"))
     assert acc is not None
     acc.balance_paise = -1
     with pytest.raises(IntegrityError):

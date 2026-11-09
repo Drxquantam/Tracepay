@@ -12,18 +12,25 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useMemo } from "react";
 import { cn } from "./ui";
 
-export function CoinMark({ size = 28, className }: { size?: number; className?: string }) {
+const COIN_TONES = {
+  purple: { edge: "rgb(var(--primary))", from: "rgb(var(--primary))", to: "rgb(var(--deep))" },
+  gold: { edge: "#d9b866", from: "#f3dc95", to: "#8f6c2a" },
+};
+
+export function CoinMark({ size = 28, className, tone = "purple" }: { size?: number; className?: string; tone?: keyof typeof COIN_TONES }) {
+  const c = COIN_TONES[tone];
+  const id = `coinFace-${tone}`; // gradient ids must be unique per colour
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden>
       <defs>
-        <linearGradient id="coinFace" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="rgb(var(--primary))" />
-          <stop offset="100%" stopColor="rgb(var(--deep))" />
+        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor={c.from} />
+          <stop offset="100%" stopColor={c.to} />
         </linearGradient>
       </defs>
       {/* Reeded edge: a dashed ring reads as the ridges on a coin's rim. */}
-      <circle cx="16" cy="16" r="14.5" fill="none" stroke="rgb(var(--primary))" strokeWidth="2" strokeDasharray="1.2 1.4" opacity="0.9" />
-      <circle cx="16" cy="16" r="11.5" fill="url(#coinFace)" />
+      <circle cx="16" cy="16" r="14.5" fill="none" stroke={c.edge} strokeWidth="2" strokeDasharray="1.2 1.4" opacity="0.9" />
+      <circle cx="16" cy="16" r="11.5" fill={`url(#${id})`} />
       {/* A "T" whose bar doubles as the path money travels along. */}
       <path d="M10.5 12.5h11M16 12.5v8.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
       <circle cx="21.5" cy="12.5" r="1.6" fill="white" />

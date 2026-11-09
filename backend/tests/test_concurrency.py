@@ -11,7 +11,7 @@ from tests.conftest import auth, balance, new_key
 
 pytestmark = pytest.mark.usefixtures("seeded")
 
-AARAV, RAVI, SHANTI = "aarav@jhatpat", "ravistore@suraksha", "shanti@suraksha"
+AARAV, RAVI, SHANTI = "aarav@swissbank", "ravistore@suraksha", "shanti@suraksha"
 
 
 async def test_100_parallel_payments_cannot_overdraw(client: AsyncClient, db: AsyncSession) -> None:

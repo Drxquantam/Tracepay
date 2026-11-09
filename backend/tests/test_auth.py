@@ -19,9 +19,9 @@ async def test_login_returns_token_and_me_shows_accounts(client: AsyncClient) ->
     me = resp.json()
     assert me["full_name"] == "Aarav Mehta"
     assert me["role"] == "customer"
-    assert [a["vpa"] for a in me["accounts"]] == ["aarav@jhatpat"]
+    assert [a["vpa"] for a in me["accounts"]] == ["aarav@swissbank"]
     assert me["accounts"][0]["balance_paise"] == 8_450_00
-    assert me["accounts"][0]["bank_name"] == "Jhatpat Bank"
+    assert me["accounts"][0]["bank_name"] == "SwissBank"
 
 
 async def test_wrong_password_and_unknown_user_give_same_error(client: AsyncClient) -> None:

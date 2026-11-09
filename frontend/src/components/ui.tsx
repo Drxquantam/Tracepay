@@ -88,7 +88,7 @@ export function SimulationBadge({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border border-warn/25 bg-warn/[0.07] px-2 py-1",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-warn/25 bg-warn/[0.07] px-2 py-1",
         "font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-warn",
         className,
       )}

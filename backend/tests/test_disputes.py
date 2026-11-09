@@ -89,9 +89,9 @@ async def test_jump_past_deadline_opens_dispute_with_compensation(
     assert d["compensation_owed_paise"] == 300_00
     assert d["headline"] == "Your bank is 3 days late: ₹300 owed"
     # The bank owes this, not the person who was paid.
-    assert d["owed_by_bank"] == "Jhatpat Bank"
+    assert d["owed_by_bank"] == "SwissBank"
     assert d["who_owes"] == (
-        "This compensation is owed by Jhatpat Bank, your bank, not by Shanti Mehta."
+        "This compensation is owed by SwissBank, your bank, not by Shanti Mehta."
     )
     assert t["payment"]["events"][-1]["kind"] == "dispute"
     assert await dispute_count(db) == 1
@@ -136,7 +136,7 @@ async def test_resolution_freezes_compensation(client: AsyncClient) -> None:
 async def test_late_refund_is_also_disputed(client: AsyncClient, db: AsyncSession) -> None:
     """Timeout, and the payer's bank goes down before refunding: stuck in reversal_pending."""
     payment_id = await stuck_payment(client, fault="debited_not_credited")
-    await db.execute(update(Bank).where(Bank.code == "JHATPAT").values(is_down=True))
+    await db.execute(update(Bank).where(Bank.code == "SWISSBANK").values(is_down=True))
     await db.commit()
     await client.post(
         f"/admin/payments/{payment_id}/retry-refund", headers=await auth(client, "admin")
@@ -223,9 +223,9 @@ async def test_claim_summary_has_every_reference(client: AsyncClient) -> None:
         "SIMULATION ONLY",
         t["payment"]["reference"],
         "Amount: ₹500",
-        "From: aarav@jhatpat",
+        "From: aarav@swissbank",
         "To: shanti@suraksha (Shanti Mehta)",
-        "Grievance Redressal Officer, Jhatpat Bank",
+        "Grievance Redressal Officer, SwissBank",
         "Days of delay: 3",
         "Compensation claimed: ₹300 (₹100 per day of delay)",
         "not from the merchant or payee",

@@ -33,13 +33,13 @@ async def test_integrity_check_catches_a_tampered_balance(db: AsyncSession) -> N
     """If anyone edits a balance without writing ledger rows, the check must say so."""
     await db.execute(
         update(Account)
-        .where(Account.vpa == "aarav@jhatpat")
+        .where(Account.vpa == "aarav@swissbank")
         .values(balance_paise=Account.balance_paise + 1_000_00)
     )
     await db.commit()
     report = await integrity_report(db)
     assert report["ok"] is False
-    assert [m["vpa"] for m in report["balance_mismatches"]] == ["aarav@jhatpat"]
+    assert [m["vpa"] for m in report["balance_mismatches"]] == ["aarav@swissbank"]
     assert report["ledger_total_paise"] == 0  # the ledger itself is still fine
 
 

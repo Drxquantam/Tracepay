@@ -12,7 +12,7 @@ from tests.conftest import auth, balance, new_key
 
 pytestmark = pytest.mark.usefixtures("seeded")
 
-AARAV, RAVI = "aarav@jhatpat", "ravistore@suraksha"
+AARAV, RAVI = "aarav@swissbank", "ravistore@suraksha"
 BODY = {"payee_vpa": RAVI, "amount_paise": 99_00, "note": "Retry me"}
 
 

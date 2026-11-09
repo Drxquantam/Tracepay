@@ -35,7 +35,7 @@ async def test_demo_story_ends_in_a_dispute_with_compensation(client: AsyncClien
     assert t["health"] == "late"
     d = t["dispute"]
     assert d["headline"] == "Your bank is 3 days late: ₹300 owed"
-    assert d["owed_by_bank"] == "Jhatpat Bank"
+    assert d["owed_by_bank"] == "SwissBank"
     assert "not by Ravi General Store" in d["who_owes"]
 
     integrity = (await client.get("/admin/ledger/integrity", headers=admin)).json()

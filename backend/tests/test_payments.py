@@ -14,7 +14,7 @@ from tests.conftest import auth, balance, new_key
 
 pytestmark = pytest.mark.usefixtures("seeded")
 
-AARAV, RAVI, SHANTI = "aarav@jhatpat", "ravistore@suraksha", "shanti@suraksha"
+AARAV, RAVI, SHANTI = "aarav@swissbank", "ravistore@suraksha", "shanti@suraksha"
 
 
 async def pay(client: AsyncClient, headers: dict, payee: str, amount: int, **extra):  # type: ignore[no-untyped-def]

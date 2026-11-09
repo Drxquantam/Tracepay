@@ -17,7 +17,7 @@ from tests.conftest import auth, balance, new_key
 
 pytestmark = pytest.mark.usefixtures("seeded")
 
-AARAV, RAVI = "aarav@jhatpat", "ravistore@suraksha"
+AARAV, RAVI = "aarav@swissbank", "ravistore@suraksha"
 
 
 async def pay(client: AsyncClient, amount: int = 250_00, fault: str | None = None) -> dict:
@@ -83,12 +83,12 @@ async def test_payee_bank_switched_off_strands_payments(
 async def test_payer_bank_down_declines_without_taking_money(
     client: AsyncClient, db: AsyncSession
 ) -> None:
-    await set_bank(db, "JHATPAT", is_down=True)
+    await set_bank(db, "SWISSBANK", is_down=True)
     before = await balance(db, AARAV)
     created = await pay(client)
     assert created["state"] == "failed"
     assert (
-        created["failure_reason"] == "Jhatpat Bank is not responding right now. No money was taken."
+        created["failure_reason"] == "SwissBank is not responding right now. No money was taken."
     )
     assert await balance(db, AARAV) == before
     t = await tracker(client, created["id"])
@@ -186,12 +186,12 @@ async def test_refund_waits_while_payer_bank_is_down(
 ) -> None:
     before = await balance(db, AARAV)
     payment_id = await _accept(db, clock, "timeout")
-    await set_bank(db, "JHATPAT", is_down=True)  # payer's bank dies after debiting
+    await set_bank(db, "SWISSBANK", is_down=True)  # payer's bank dies after debiting
     await switch.run_payment(session_factory, clock, payment_id)
     assert await _state(session_factory, payment_id) == PaymentState.REVERSAL_PENDING
     assert await balance(db, AARAV) == before - 300_00
 
-    await set_bank(db, "JHATPAT", is_down=False)
+    await set_bank(db, "SWISSBANK", is_down=False)
     await switch.refund(session_factory, clock, payment_id)
     assert await _state(session_factory, payment_id) == PaymentState.REVERSED
     assert await balance(db, AARAV) == before

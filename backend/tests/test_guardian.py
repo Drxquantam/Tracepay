@@ -14,7 +14,7 @@ from tests.conftest import auth, balance, new_key
 
 pytestmark = pytest.mark.usefixtures("seeded")
 
-SHANTI, AARAV, RAVI = "shanti@suraksha", "aarav@jhatpat", "ravistore@suraksha"
+SHANTI, AARAV, RAVI = "shanti@suraksha", "aarav@swissbank", "ravistore@suraksha"
 MIN = 60
 
 

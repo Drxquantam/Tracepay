@@ -52,14 +52,14 @@ async def seed_demo_data(db: AsyncSession) -> bool:
     )
     # The flaky bank is also slow: it takes 2 real seconds to confirm a credit, so the flight
     # path animation has something to show even without chaos.
-    jhatpat = Bank(
-        code="JHATPAT",
-        name="Jhatpat Bank",
+    swissbank = Bank(
+        code="SWISSBANK",
+        name="SwissBank",
         profile=BankProfile.FLAKY,
         is_down=False,
         response_delay_seconds=2.0,
     )
-    db.add_all([suraksha, jhatpat])
+    db.add_all([suraksha, swissbank])
 
     pw = hash_password(DEMO_PASSWORD)
     aarav = User(
@@ -112,7 +112,7 @@ async def seed_demo_data(db: AsyncSession) -> bool:
     )
     account(None, suraksha, SUSPENSE_VPA, "Settlement suspense (system)", AccountKind.SYSTEM)
     # Aarav banks with the flaky bank, so the demo's "bank dies mid-flight" story is natural.
-    aarav_acc = account(aarav, jhatpat, "aarav@jhatpat", "Aarav Mehta", AccountKind.USER)
+    aarav_acc = account(aarav, swissbank, "aarav@swissbank", "Aarav Mehta", AccountKind.USER)
     shanti_acc = account(shanti, suraksha, "shanti@suraksha", "Shanti Mehta", AccountKind.USER)
     ravi_acc = account(
         ravi, suraksha, "ravistore@suraksha", "Ravi General Store", AccountKind.MERCHANT
@@ -120,9 +120,9 @@ async def seed_demo_data(db: AsyncSession) -> bool:
     # Merchants with no login, used for payments and (Phase 6) recurring mandates.
     account(None, suraksha, "streamflix@suraksha", "StreamFlix (demo OTT)", AccountKind.MERCHANT)
     account(
-        None, jhatpat, "gridpower@jhatpat", "GridPower Electricity (demo)", AccountKind.MERCHANT
+        None, swissbank, "gridpower@swissbank", "GridPower Electricity (demo)", AccountKind.MERCHANT
     )
-    account(None, jhatpat, "campuschai@jhatpat", "Campus Chai Point", AccountKind.MERCHANT)
+    account(None, swissbank, "campuschai@swissbank", "Campus Chai Point", AccountKind.MERCHANT)
     await db.flush()
 
     # Opening balances go through the real ledger code: the money comes from a system
@@ -149,7 +149,7 @@ async def seed_demo_data(db: AsyncSession) -> bool:
     # Two active mandates for Aarav: a streaming trial that turns into a paid plan, and
     # his hostel electricity bill.
     streamflix = await db.scalar(select(Account).where(Account.vpa == "streamflix@suraksha"))
-    gridpower = await db.scalar(select(Account).where(Account.vpa == "gridpower@jhatpat"))
+    gridpower = await db.scalar(select(Account).where(Account.vpa == "gridpower@swissbank"))
     assert streamflix and gridpower
     db.add_all(
         [
@@ -208,9 +208,9 @@ async def _seed_past_payments(db: AsyncSession, now: datetime, aarav: User, shan
         await payments.send_to_switch(db, p.id, at + timedelta(seconds=2))
         await payments.credit_payee(db, p.id, at + timedelta(seconds=4))
 
-    await paid(shanti, "gridpower@jhatpat", rupees(1_240), "Electricity bill", 10)
-    await paid(shanti, "aarav@jhatpat", rupees(2_000), "Pocket money", 5)
-    await paid(aarav, "campuschai@jhatpat", rupees(40), "Chai and samosa", 2)
+    await paid(shanti, "gridpower@swissbank", rupees(1_240), "Electricity bill", 10)
+    await paid(shanti, "aarav@swissbank", rupees(2_000), "Pocket money", 5)
+    await paid(aarav, "campuschai@swissbank", rupees(40), "Chai and samosa", 2)
     await paid(aarav, "ravistore@suraksha", rupees(350), "Groceries", 1)
 
     # One payment that failed in the switch and was refunded, so the history shows a
@@ -219,7 +219,7 @@ async def _seed_past_payments(db: AsyncSession, now: datetime, aarav: User, shan
     p = await payments.accept_payment(
         db,
         payer_user_id=aarav.id,
-        payee_vpa="campuschai@jhatpat",
+        payee_vpa="campuschai@swissbank",
         amount_paise=rupees(120),
         note="Snacks",
         at=at,
