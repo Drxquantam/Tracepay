@@ -153,3 +153,34 @@ export type Notification = {
   created_at: string;
   read_at: string | null;
 };
+
+export type UpcomingDebit = { due_at: string; amount_paise: number; is_trial: boolean };
+
+export type MandateDebit = {
+  id: number;
+  due_at: string;
+  amount_paise: number;
+  is_trial: boolean;
+  status: "notified" | "retrying" | "succeeded" | "failed" | "skipped" | "cancelled";
+  attempts: number;
+  next_attempt_at: string | null;
+  payment_id: string | null;
+  failure_reason: string | null;
+};
+
+export type Mandate = {
+  id: number;
+  merchant_name: string;
+  merchant_vpa: string;
+  purpose: string;
+  amount_paise: number;
+  max_amount_paise: number;
+  frequency: "monthly" | "weekly";
+  trial_amount_paise: number | null;
+  trial_debits_left: number;
+  status: "active" | "paused" | "revoked";
+  next_debit_at: string | null;
+  created_at: string;
+  upcoming: UpcomingDebit[];
+  debits: MandateDebit[];
+};

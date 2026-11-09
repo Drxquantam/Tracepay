@@ -8,8 +8,8 @@ to my money after something goes wrong?* It tracks each payment through its stag
 when a bank misses its turnaround deadline. The bank then owes compensation, and TracePay
 works out how much.
 
-Status: **Phase 5 of 7**: Guardian mode added (trusted-person approvals, cooling-off,
-kill switch, notification centre, senior mode). The full README (architecture, design decisions, rules table, limitations) is written
+Status: **Phase 6 of 7**: Mandate Manager added (recurring debits, 24-hour pre-debit
+notices, retries, trial-to-paid flags, calendar). The full README (architecture, design decisions, rules table, limitations) is written
 in Phase 7.
 
 ## Run it

@@ -2,7 +2,7 @@
 // on phones (like a real payments app), and a fade/slide transition between pages.
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Bell, Home, LogOut, Moon, Scale, Send, Shield, Sun, Type } from "lucide-react";
+import { Bell, CalendarClock, Home, LogOut, Moon, Scale, Send, Shield, Sun, Type } from "lucide-react";
 import { useEffect } from "react";
 import { Link, NavLink, useLocation, useOutlet } from "react-router-dom";
 import { api } from "../lib/api";
@@ -15,6 +15,7 @@ import { cn, SimulationBadge } from "./ui";
 const CUSTOMER_NAV = [
   { to: "/", label: "Home", icon: Home },
   { to: "/pay", label: "Pay", icon: Send },
+  { to: "/mandates", label: "Mandates", icon: CalendarClock },
   { to: "/guardian", label: "Guardian", icon: Shield },
   { to: "/disputes", label: "Disputes", icon: Scale },
 ];

@@ -19,6 +19,7 @@ from app.models import (
     Bank,
     BankProfile,
     GuardianSettings,
+    Mandate,
     SimClock,
     User,
     UserRole,
@@ -144,6 +145,40 @@ async def seed_demo_data(db: AsyncSession) -> bool:
         )
 
     await _seed_past_payments(db, now, aarav, shanti)
+
+    # Two active mandates for Aarav: a streaming trial that turns into a paid plan, and
+    # his hostel electricity bill.
+    streamflix = await db.scalar(select(Account).where(Account.vpa == "streamflix@suraksha"))
+    gridpower = await db.scalar(select(Account).where(Account.vpa == "gridpower@jhatpat"))
+    assert streamflix and gridpower
+    db.add_all(
+        [
+            Mandate(
+                payer_account_id=aarav_acc.id,
+                merchant_account_id=streamflix.id,
+                purpose="StreamFlix Premium",
+                amount_paise=rupees(499),
+                max_amount_paise=rupees(649),
+                frequency="monthly",
+                trial_amount_paise=rupees(1),
+                trial_debits_left=1,
+                next_debit_at=now + timedelta(days=2),
+                status="active",
+                created_at=now - timedelta(days=28),
+            ),
+            Mandate(
+                payer_account_id=aarav_acc.id,
+                merchant_account_id=gridpower.id,
+                purpose="Hostel electricity",
+                amount_paise=rupees(850),
+                max_amount_paise=rupees(1_500),
+                frequency="monthly",
+                next_debit_at=now + timedelta(days=9),
+                status="active",
+                created_at=now - timedelta(days=60),
+            ),
+        ]
+    )
 
     # Guardian mode: Shanti (who also uses senior mode) chose her grandson Aarav as her
     # trusted person. Big or first-time payments need his OK; very large ones also pause.

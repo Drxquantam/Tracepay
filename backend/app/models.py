@@ -17,6 +17,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -277,6 +278,64 @@ class Notification(Base):
     link: Mapped[str | None] = mapped_column(String(200))  # a path in the web app
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # simulated time
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Mandate(Base):
+    """A recurring debit the user authorised for a merchant (an e-mandate / UPI AutoPay)."""
+
+    __tablename__ = "mandates"
+    __table_args__ = (
+        CheckConstraint("amount_paise > 0", name="ck_mandates_positive"),
+        CheckConstraint("amount_paise <= max_amount_paise", name="ck_mandates_within_cap"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    payer_account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), index=True)
+    merchant_account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"))
+    purpose: Mapped[str] = mapped_column(String(120))
+    amount_paise: Mapped[int] = mapped_column(BigInteger)  # regular amount (after any trial)
+    max_amount_paise: Mapped[int] = mapped_column(BigInteger)  # cap per debit the user agreed to
+    frequency: Mapped[str] = mapped_column(String(10))  # "monthly" | "weekly"
+    # Trial-to-paid: e.g. ₹1 for the first debit, then ₹499. The dashboard flags these.
+    trial_amount_paise: Mapped[int | None] = mapped_column(BigInteger)
+    trial_debits_left: Mapped[int] = mapped_column(Integer, default=0)
+    next_debit_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(12), default="active")  # active|paused|revoked
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    payer_account: Mapped[Account] = relationship(foreign_keys=[payer_account_id])
+    merchant_account: Mapped[Account] = relationship(foreign_keys=[merchant_account_id])
+    debits: Mapped[list["MandateDebit"]] = relationship(
+        back_populates="mandate", order_by="MandateDebit.due_at.desc()"
+    )
+
+
+class MandateDebit(Base):
+    """One billing cycle of a mandate: notice sent, then one or more debit attempts.
+
+    The unique (mandate_id, due_at) pair means a cycle can only ever exist once, so running
+    the scheduler twice (or two schedulers at once) can't charge the same cycle twice.
+    """
+
+    __tablename__ = "mandate_debits"
+    __table_args__ = (UniqueConstraint("mandate_id", "due_at", name="uq_mandate_debit_cycle"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    mandate_id: Mapped[int] = mapped_column(ForeignKey("mandates.id"), index=True)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    amount_paise: Mapped[int] = mapped_column(BigInteger)
+    is_trial: Mapped[bool] = mapped_column(Boolean, default=False)
+    # notified | retrying | succeeded | failed | skipped (paused) | cancelled (revoked)
+    status: Mapped[str] = mapped_column(String(12), index=True)
+    notice_sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Earliest moment the next attempt may run: never sooner than 24 h after the notice.
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    payment_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("payments.id"))  # latest
+    failure_reason: Mapped[str | None] = mapped_column(String(300))
+
+    mandate: Mapped[Mandate] = relationship(back_populates="debits")
 
 
 class IdempotencyKey(Base):

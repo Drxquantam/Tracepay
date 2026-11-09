@@ -69,3 +69,20 @@ DEADLINE_SWEEP_INTERVAL_SECONDS = 15
 APPROVAL_EXPIRES_AFTER_MINUTES = 60
 # Default cooling-off period for large payments, if the user doesn't choose one.
 DEFAULT_COOLING_OFF_MINUTES = 30
+
+# --- Mandates (recurring debits) ---
+
+# MODELLED ON: RBI e-mandate framework for recurring payments: the customer must get a
+# pre-debit notification at least 24 hours before each debit (modelled on RBI rules,
+# verify against the current circular before quoting).
+PRE_DEBIT_NOTICE_HOURS = 24
+
+# MODELLED ON: RBI e-mandate framework: recurring debits up to ₹15,000 can run without
+# extra authentication each time; above that needs an additional factor (modelled on RBI
+# rules, verify against the current circular; some categories have a higher limit).
+# This simulation doesn't model that extra step, so it refuses mandates with a higher cap.
+E_MANDATE_MAX_WITHOUT_AFA_PAISE = 15_000 * 100
+
+# Simulation knob (not a regulation): when a debit fails, try again after these many
+# hours, then give up for that cycle.
+MANDATE_RETRY_HOURS = (6, 24)

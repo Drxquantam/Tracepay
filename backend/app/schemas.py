@@ -268,3 +268,51 @@ class NotificationOut(BaseModel):
 class NotificationsOut(BaseModel):
     unread: int
     items: list[NotificationOut]
+
+
+class MandateCreate(BaseModel):
+    merchant_vpa: str
+    purpose: str = Field(min_length=2, max_length=120)
+    amount_paise: int = Field(gt=0)
+    max_amount_paise: int = Field(gt=0)
+    frequency: Literal["monthly", "weekly"] = "monthly"
+    first_debit_at: datetime
+    trial_amount_paise: int | None = Field(default=None, gt=0)
+    trial_debits: int = Field(default=1, ge=1, le=12)
+
+
+class UpcomingDebit(BaseModel):
+    due_at: datetime
+    amount_paise: int
+    is_trial: bool
+
+
+class MandateDebitOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    due_at: datetime
+    amount_paise: int
+    is_trial: bool
+    status: str
+    attempts: int
+    next_attempt_at: datetime | None
+    payment_id: uuid.UUID | None
+    failure_reason: str | None
+
+
+class MandateOut(BaseModel):
+    id: int
+    merchant_name: str
+    merchant_vpa: str
+    purpose: str
+    amount_paise: int
+    max_amount_paise: int
+    frequency: Literal["monthly", "weekly"]
+    trial_amount_paise: int | None
+    trial_debits_left: int
+    status: Literal["active", "paused", "revoked"]
+    next_debit_at: datetime | None
+    created_at: datetime
+    upcoming: list[UpcomingDebit]
+    debits: list[MandateDebitOut]  # most recent cycles first

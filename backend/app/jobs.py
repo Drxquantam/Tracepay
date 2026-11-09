@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.clock import Clock
 from app.disputes import open_overdue_disputes
 from app.guardian import process_due_holds
+from app.mandates import process_mandates
 from app.switch import run_payment
 
 
@@ -20,6 +21,7 @@ from app.switch import run_payment
 class JobResult:
     disputes_opened: int = 0
     holds_processed: int = 0
+    mandate_debits: int = 0
     payments_to_run: list[uuid.UUID] = field(default_factory=list)
 
 
@@ -32,6 +34,12 @@ async def run_due_jobs(maker: async_sessionmaker[AsyncSession], clock: Clock) ->
         await db.commit()
     result.payments_to_run += released
     result.holds_processed = len(released)
+
+    async with maker() as db:
+        debited = await process_mandates(db, await clock.now(db))
+        await db.commit()
+    result.payments_to_run += debited
+    result.mandate_debits = len(debited)
 
     async with maker() as db:
         opened = await open_overdue_disputes(db, await clock.now(db))
