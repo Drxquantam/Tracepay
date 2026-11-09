@@ -37,12 +37,14 @@ services:
     build: ./frontend
     environment:
       VITE_API_URL: http://localhost:8000
+      VITE_POLL: "true" # hot reload through the bind mount (see vite.config.ts)
     ports:
       - "${WEB_PORT:-5173}:5173" # set WEB_PORT in .env if 5173 is taken on your machine
     depends_on:
       - api
     volumes:
-      - ./frontend/src:/app/src
+      - ./frontend:/app # live reload, including config files
+      - /app/node_modules # keep the container's own node_modules (Linux builds)
 
 volumes:
   pgdata:

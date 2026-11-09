@@ -54,6 +54,7 @@ class PaymentOut(BaseModel):
     id: uuid.UUID
     reference: str
     payer_vpa: str
+    payer_name: str
     payee_vpa: str
     payee_name: str
     amount_paise: int
@@ -167,3 +168,12 @@ class BankChaosUpdate(BaseModel):
 
 class ResolveRequest(BaseModel):
     outcome: Literal["credit", "reverse"]
+
+
+class PayeeOut(BaseModel):
+    """Someone you can pay: a contact or a shop (simulated UPI directory)."""
+
+    vpa: str
+    name: str
+    kind: str
+    bank_name: str

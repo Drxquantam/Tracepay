@@ -215,3 +215,26 @@ async def test_failure_before_debit_needs_no_refund(db: AsyncSession, frozen_clo
     assert p.state == PaymentState.FAILED
     with pytest.raises(InvalidTransition):
         await payments.complete_reversal(db, p.id, at)
+
+
+async def test_payee_directory_excludes_self_and_system_accounts(client: AsyncClient) -> None:
+    payees = (await client.get("/payees", headers=await auth(client, "aarav"))).json()
+    vpas = [p["vpa"] for p in payees]
+    assert AARAV not in vpas  # not yourself
+    assert not any(v.endswith("@tracepay") for v in vpas)  # no internal accounts
+    assert {SHANTI, RAVI, "streamflix@suraksha"} <= set(vpas)
+    # People are listed before shops.
+    kinds = [p["kind"] for p in payees]
+    assert kinds == sorted(kinds, key=lambda k: k != "user")
+    shanti = next(p for p in payees if p["vpa"] == SHANTI)
+    assert shanti == {
+        "vpa": SHANTI,
+        "name": "Shanti Mehta",
+        "kind": "user",
+        "bank_name": "Suraksha Bank",
+    }
+
+
+async def test_payment_shows_both_names(client: AsyncClient) -> None:
+    created = (await pay(client, await auth(client, "aarav"), RAVI, 5_00)).json()
+    assert (created["payer_name"], created["payee_name"]) == ("Aarav Mehta", "Ravi General Store")

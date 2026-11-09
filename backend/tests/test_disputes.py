@@ -263,3 +263,19 @@ async def test_time_travel_alone_opens_dispute_with_no_other_action(
     deadline = await db.scalar(select(Dispute.deadline_at))
     assert opened_after is not None and deadline is not None
     assert opened_after - deadline == timedelta(hours=15, minutes=30)
+
+
+async def test_clock_reset_does_not_shrink_an_open_dispute(client: AsyncClient) -> None:
+    """Found in the browser: resetting the demo clock after a dispute opened showed
+    "0 days late: ₹0 owed". Lateness is now never measured before the dispute opened."""
+    payment_id = await stuck_payment(client)
+    await jump(client, 4 * DAY)
+    before = (await tracker(client, payment_id))["dispute"]
+    await client.post("/admin/clock/reset", headers=await auth(client, "admin"))
+
+    t = await tracker(client, payment_id)
+    assert t["dispute"]["days_late"] == before["days_late"] == 3
+    assert t["dispute"]["compensation_owed_paise"] == 300_00
+    assert t["breached"] is True and t["health"] == "late"
+    listed = (await client.get("/disputes", headers=await auth(client, "aarav"))).json()
+    assert listed[0]["headline"] == "Your bank is 3 days late: ₹300 owed"

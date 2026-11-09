@@ -136,8 +136,15 @@ async def load_dispute(db: AsyncSession, dispute_id: int) -> Dispute | None:
 
 
 def _measured_until(d: Dispute, now: datetime) -> datetime:
-    """Compensation grows until the money arrives, then stops."""
-    return d.resolved_at or now
+    """Compensation grows until the money arrives, then stops.
+
+    Never measured before the moment the dispute opened: if an admin resets the demo clock
+    to an earlier time, a dispute must not shrink back to "0 days late". What was owed when
+    it opened stays owed.
+    """
+    if d.resolved_at is not None:
+        return d.resolved_at
+    return max(now, d.opened_at)
 
 
 def owed_paise(d: Dispute, now: datetime) -> int:

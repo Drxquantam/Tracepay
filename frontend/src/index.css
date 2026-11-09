@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- Theme tokens (space-separated RGB so Tailwind can add opacity) ----------------- */
+
+:root {
+  /* Light mode: cool lavender-white, deep ink, slightly darker accents for contrast. */
+  --canvas: 244 246 255;
+  --ink: 15 23 42;
+  --muted: 82 92 120;
+  --line: 15 23 42;
+  --teal: 13 148 136;
+  --violet: 124 58 237;
+  --ok: 5 150 105;
+  --warn: 180 83 9;
+  --bad: 220 38 38;
+  --glass: 255 255 255;
+  --glass-a: 0.72;
+  --line-a: 0.08;
+  color-scheme: light;
+}
+
+.dark {
+  /* Dark mode (default): deep navy into indigo, electric teal → violet accents. */
+  --canvas: 6 10 26;
+  --ink: 236 240 255;
+  --muted: 148 158 196;
+  --line: 255 255 255;
+  --teal: 45 212 191;
+  --violet: 139 92 246;
+  --ok: 52 211 153;
+  --warn: 251 191 36;
+  --bad: 248 113 113;
+  --glass: 255 255 255;
+  --glass-a: 0.045;
+  --line-a: 0.09;
+  color-scheme: dark;
+}
+
+/* Senior mode: everything is sized in rem, so scaling the root makes the whole app
+   larger in one step. */
+html.senior {
+  font-size: 118.75%;
+}
+
+@layer base {
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    min-height: 100dvh;
+    background-image:
+      radial-gradient(60rem 40rem at 85% -10%, rgb(var(--violet) / 0.22), transparent 60%),
+      radial-gradient(50rem 36rem at -10% 10%, rgb(var(--teal) / 0.12), transparent 60%),
+      linear-gradient(180deg, rgb(var(--canvas)), rgb(var(--canvas)));
+    background-attachment: fixed;
+  }
+  .dark body {
+    background-image:
+      radial-gradient(60rem 40rem at 85% -10%, rgb(99 72 220 / 0.35), transparent 60%),
+      radial-gradient(50rem 36rem at -10% 10%, rgb(20 160 170 / 0.16), transparent 60%),
+      linear-gradient(180deg, #060a1a 0%, #0d1233 55%, #1a1650 100%);
+  }
+  /* Visible keyboard focus everywhere, in the accent colour. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--teal));
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+}
+
+@layer components {
+  /* Soft glass card: translucent surface, hairline border, background blur. */
+  .glass {
+    background: rgb(var(--glass) / var(--glass-a));
+    border: 1px solid rgb(var(--line) / var(--line-a));
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+  }
+  .text-gradient {
+    @apply bg-accent bg-clip-text text-transparent;
+  }
+  /* Money is always set in tabular figures, so digits line up in lists and counters. */
+  .money {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -12,7 +12,7 @@ from app.clock import get_clock
 from app.config import settings
 from app.db import SessionLocal
 from app.disputes import open_overdue_disputes
-from app.routers import admin, auth, chaos, clock, disputes, health, payments
+from app.routers import admin, auth, chaos, clock, disputes, health, payees, payments
 from app.rules import DEADLINE_SWEEP_INTERVAL_SECONDS
 
 log = logging.getLogger("tracepay")
@@ -56,5 +56,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for module in (health, auth, payments, disputes, clock, admin, chaos):
+for module in (health, auth, payees, payments, disputes, clock, admin, chaos):
     app.include_router(module.router)

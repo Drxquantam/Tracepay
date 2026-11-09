@@ -32,6 +32,7 @@ def payment_out(p: Payment) -> PaymentOut:
         id=p.id,
         reference=p.reference,
         payer_vpa=p.payer_account.vpa,
+        payer_name=p.payer_account.display_name,
         payee_vpa=p.payee_account.vpa,
         payee_name=p.payee_account.display_name,
         amount_paise=p.amount_paise,

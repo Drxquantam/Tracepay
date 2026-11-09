@@ -8,8 +8,8 @@ to my money after something goes wrong?* It tracks each payment through its stag
 when a bank misses its turnaround deadline. The bank then owes compensation, and TracePay
 works out how much.
 
-Status: **Phase 3 of 7** (mock bank and switch with fault injection, Money in Flight
-tracker, automatic disputes and compensation). Backend only so far; the UI starts in Phase 4. The full README (architecture, design decisions, rules table, limitations) is written
+Status: **Phase 4 of 7**: web app with login, dashboard, pay flow, and the payment
+tracker with its animated flight path, deadline countdown and dispute card. The full README (architecture, design decisions, rules table, limitations) is written
 in Phase 7.
 
 ## Run it
@@ -24,6 +24,9 @@ docker compose up --build
 
 On start the API container runs `alembic upgrade head`, then `python -m app.seed` (safe to
 repeat), then the server.
+
+After pulling new frontend dependencies, recreate the web container's `node_modules`
+volume: `docker compose up --build -V web`.
 
 If you ran an earlier phase, reset the database once, because the seed data changed:
 `docker compose down -v && docker compose up --build`. If port 5173 is taken on your

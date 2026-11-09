@@ -30,8 +30,11 @@ def tracker_view(p: Payment, dispute: Dispute | None, now: datetime) -> dict:
     rule = rule_for(p.payee_account.kind) if money_moved else None
     deadline = deadline_for(p.created_at, rule.tat_days) if rule else None
     resolved_at = p.updated_at if state in RESOLVED else None
-    breached = deadline is not None and (resolved_at or now) > deadline
-    late = days_late(deadline, resolved_at or now) if deadline else 0
+    measured = resolved_at or now
+    if dispute is not None and resolved_at is None:
+        measured = max(measured, dispute.opened_at)  # see disputes._measured_until
+    breached = deadline is not None and measured > deadline
+    late = days_late(deadline, measured) if deadline else 0
 
     if state == S.INITIATED:
         position, health, headline = "payer_bank", "ok", "Waiting for your bank"
