@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://tracepay:tracepay@localhost:5433/tracepay"
     test_database_url: str = "postgresql+asyncpg://tracepay:tracepay@localhost:5433/tracepay_test"
 
+    db_pool_size: int = 20
+    db_max_overflow: int = 20
+
     jwt_secret: str = "dev-only-secret-change-me"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 12 * 60

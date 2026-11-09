@@ -86,7 +86,7 @@ export default function PaymentDetail() {
             {formatDateTime(p.created_at)}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-2">
           <StateBadge state={p.state} stuck={stuck && !finished} />
           <button onClick={copyRef} className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-ink" aria-label={`Copy reference number ${p.reference}`}>
             Ref <span className="money font-semibold text-ink">{p.reference}</span>

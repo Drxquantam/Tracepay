@@ -77,9 +77,11 @@ class Account(Base):
     __tablename__ = "accounts"
     __table_args__ = (
         # Last line of defence against overdrafts: even if application code had a bug,
-        # Postgres refuses to store a negative balance for a non-system account.
+        # Postgres refuses to store a negative customer balance. System accounts keep no
+        # cached balance at all (see ledger.py, rule 4), so theirs must stay 0.
         CheckConstraint(
-            "kind = 'system' OR balance_paise >= 0", name="ck_accounts_non_negative_balance"
+            "(kind <> 'system' AND balance_paise >= 0) OR (kind = 'system' AND balance_paise = 0)",
+            name="ck_accounts_balance_rules",
         ),
     )
 
@@ -89,8 +91,9 @@ class Account(Base):
     vpa: Mapped[str] = mapped_column(String(100), unique=True)  # UPI ID, e.g. "aarav@suraksha"
     display_name: Mapped[str] = mapped_column(String(120))
     kind: Mapped[str] = mapped_column(String(20), default=AccountKind.USER)
-    # Cached balance. The ledger is the source of truth; this column is updated in the same
-    # DB transaction as the ledger rows, and the integrity check compares the two.
+    # Cached balance for user/merchant accounts (always 0 for system accounts). The ledger
+    # is the source of truth; this column is updated in the same DB transaction as the
+    # ledger rows, and the integrity check compares the two.
     balance_paise: Mapped[int] = mapped_column(BigInteger, default=0)
     is_frozen: Mapped[bool] = mapped_column(Boolean, default=False)  # guardian kill switch
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

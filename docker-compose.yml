@@ -25,6 +25,10 @@ services:
       TEST_DATABASE_URL: postgresql+asyncpg://tracepay:tracepay@db:5432/tracepay_test
       JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me}
       CORS_ORIGINS: http://localhost:${WEB_PORT:-5173}
+      # Dev default: one auto-reloading process. Load test: UVICORN_ARGS="--workers 4".
+      UVICORN_ARGS: ${UVICORN_ARGS:---reload}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
     ports:
       - "8000:8000"
     depends_on:

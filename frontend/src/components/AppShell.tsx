@@ -2,7 +2,7 @@
 // on phones (like a real payments app), and a fade/slide transition between pages.
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Bell, CalendarClock, Home, LogOut, Moon, Scale, Send, Shield, Sun, Type } from "lucide-react";
+import { Bell, CalendarClock, Gauge, Home, LogOut, Moon, Scale, Send, Shield, Sun, Type } from "lucide-react";
 import { useEffect } from "react";
 import { Link, NavLink, useLocation, useOutlet } from "react-router-dom";
 import { api } from "../lib/api";
@@ -19,7 +19,7 @@ const CUSTOMER_NAV = [
   { to: "/guardian", label: "Guardian", icon: Shield },
   { to: "/disputes", label: "Disputes", icon: Scale },
 ];
-const ADMIN_NAV = [{ to: "/", label: "Home", icon: Home }];
+const ADMIN_NAV = [{ to: "/", label: "Admin", icon: Gauge }];
 
 export function Logo({ className }: { className?: string }) {
   return (

@@ -26,6 +26,7 @@ from app.routers import (
     payments,
 )
 from app.rules import DEADLINE_SWEEP_INTERVAL_SECONDS
+from app.worker import spawn
 
 log = logging.getLogger("tracepay")
 
@@ -39,9 +40,7 @@ async def deadline_sweep_loop() -> None:
         try:
             result = await run_due_jobs(SessionLocal, get_clock())
             if result.payments_to_run:
-                asyncio.create_task(
-                    start_payments(SessionLocal, get_clock(), result.payments_to_run)
-                )
+                spawn(start_payments(SessionLocal, get_clock(), result.payments_to_run))
             if result.disputes_opened:
                 log.info("Deadline sweep opened %d dispute(s)", result.disputes_opened)
         except Exception:  # keep the loop alive; one bad run shouldn't stop future checks

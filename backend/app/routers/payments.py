@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
@@ -23,6 +23,7 @@ from app.schemas import (
 from app.state_machine import PaymentState
 from app.switch import run_payment
 from app.tracker import tracker_view
+from app.worker import spawn
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -48,7 +49,6 @@ def payment_out(p: Payment) -> PaymentOut:
 async def create_payment(
     body: PaymentCreate,
     response: Response,
-    background: BackgroundTasks,
     idempotency_key: str | None = Header(default=None, max_length=100),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -104,7 +104,7 @@ async def create_payment(
     # The rest of the journey (switch, credit) happens after we've answered the client,
     # the way a real PSP replies "accepted" and settles asynchronously.
     if payment.state == PaymentState.BANK_DEBITED:
-        background.add_task(run_payment, maker, clock, payment.id)
+        spawn(run_payment(maker, clock, payment.id))
     return out
 
 

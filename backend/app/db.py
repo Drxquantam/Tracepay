@@ -13,9 +13,13 @@ class Base(DeclarativeBase):
     pass
 
 
-# pool_size: enough connections for bursts of parallel payments in the demo and load test.
+# Connections per server process. With several worker processes, keep
+# workers x (pool_size + max_overflow) under Postgres's max_connections (100 by default).
 engine = create_async_engine(
-    settings.database_url, pool_pre_ping=True, pool_size=20, max_overflow=20
+    settings.database_url,
+    pool_pre_ping=True,
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
 )
 
 # expire_on_commit=False: objects stay readable after commit, so a route can

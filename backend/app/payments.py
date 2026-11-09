@@ -93,13 +93,11 @@ async def accept_payment(
 
     # The key line for concurrency safety: lock the payer's row *before* reading the
     # balance. A second payment from the same account waits here until we commit, then
-    # sees the reduced balance.
-    #
-    # Plain reads (like the bank lookup above) happen *before* this line: every payment
-    # locks the suspense row, so the less work done while holding it, the better the
-    # throughput. (See lock_accounts for why the lock mode matters too.)
-    locked = await lock_accounts(db, [payer.id, suspense.id])
-    payer, suspense = locked[payer.id], locked[suspense.id]
+    # sees the reduced balance. Only the payer is locked: the suspense account is a system
+    # account with no cached balance (ledger.py, rule 4), so payments from different
+    # people never queue behind each other. Plain reads happen before this line, to hold
+    # the lock as briefly as possible.
+    payer = (await lock_accounts(db, [payer.id]))[payer.id]
 
     payment = Payment(
         id=uuid.uuid4(),
@@ -148,7 +146,7 @@ def _decline(db: AsyncSession, payment: Payment, at: datetime, reason: str) -> N
 def _debit(
     db: AsyncSession, payment: Payment, payer: Account, suspense: Account, at: datetime
 ) -> None:
-    """Payer → suspense. Both accounts must already be locked."""
+    """Payer → suspense. The payer must already be locked."""
     post_transfer(
         db,
         from_account=payer,
@@ -175,8 +173,7 @@ async def release_held(db: AsyncSession, payment_id: uuid.UUID, at: datetime) ->
     payer_bank = await db.get(Bank, payer.bank_id, populate_existing=True)
     assert payer_bank is not None
     suspense = await get_system_account(db, SUSPENSE_VPA)
-    locked = await lock_accounts(db, [payer.id, suspense.id])
-    payer, suspense = locked[payer.id], locked[suspense.id]
+    payer = (await lock_accounts(db, [payer.id]))[payer.id]
 
     decline = _decline_reason(payer, payer_bank, payment.amount_paise)
     if decline:
@@ -214,13 +211,12 @@ async def credit_payee(db: AsyncSession, payment_id: uuid.UUID, at: datetime) ->
     # credited twice for one payment.
     transition(db, payment, PaymentState.CREDITED, at, "Credited to the payee's account")
     await mark_resolved(db, payment, at)
-    # Lock the hot suspense row last, after all the other work, to hold it briefly.
     suspense = await get_system_account(db, SUSPENSE_VPA)
-    locked = await lock_accounts(db, [suspense.id, payment.payee_account_id])
+    payee = (await lock_accounts(db, [payment.payee_account_id]))[payment.payee_account_id]
     post_transfer(
         db,
-        from_account=locked[suspense.id],
-        to_account=locked[payment.payee_account_id],
+        from_account=suspense,
+        to_account=payee,
         amount_paise=payment.amount_paise,
         at=at,
         description=f"Credit for payment {payment.reference}",
@@ -252,13 +248,12 @@ async def complete_reversal(db: AsyncSession, payment_id: uuid.UUID, at: datetim
     # never be paid out twice.
     transition(db, payment, PaymentState.REVERSED, at, "Money returned to your account")
     await mark_resolved(db, payment, at)
-    # Lock the hot suspense row last, after all the other work, to hold it briefly.
     suspense = await get_system_account(db, SUSPENSE_VPA)
-    locked = await lock_accounts(db, [suspense.id, payment.payer_account_id])
+    payer = (await lock_accounts(db, [payment.payer_account_id]))[payment.payer_account_id]
     post_transfer(
         db,
-        from_account=locked[suspense.id],
-        to_account=locked[payment.payer_account_id],
+        from_account=suspense,
+        to_account=payer,
         amount_paise=payment.amount_paise,
         at=at,
         description=f"Reversal of payment {payment.reference}",

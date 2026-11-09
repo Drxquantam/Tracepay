@@ -134,10 +134,10 @@ async def seed_demo_data(db: AsyncSession) -> bool:
         (shanti_acc, rupees(2_18_240)),
         (ravi_acc, rupees(45_970)),
     ]:
-        locked = await lock_accounts(db, [opening.id, acc.id])
+        locked = await lock_accounts(db, [acc.id])
         post_transfer(
             db,
-            from_account=locked[opening.id],
+            from_account=opening,
             to_account=locked[acc.id],
             amount_paise=amount,
             at=now - timedelta(days=30),

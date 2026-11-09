@@ -21,12 +21,16 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app import models  # noqa: F401  (registers the tables on Base.metadata)
+from app import (
+    models,  # noqa: F401  (registers the tables on Base.metadata)
+    worker,
+)
 from app.clock import Clock, get_clock
 from app.config import settings
 from app.db import Base, get_sessionmaker
+from app.ledger import ledger_balance
 from app.main import app
-from app.models import Account
+from app.models import Account, AccountKind
 from app.seed import seed_demo_data
 
 # A fixed "real" time for tests that need exact timestamps.
@@ -83,12 +87,20 @@ async def client(
 ) -> AsyncIterator[AsyncClient]:
     """HTTP client that calls the app in-process, with the DB pointed at the test database.
 
-    httpx's ASGI transport waits for the whole app call, including background tasks, so
-    when a request returns, the payment's background processing has finished too.
+    After every response, the hook waits for work the request spawned (e.g. the mock
+    switch carrying a payment to the payee), so tests see the settled result.
     """
     app.dependency_overrides[get_sessionmaker] = lambda: session_factory
     app.dependency_overrides[get_clock] = lambda: clock
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+
+    async def settle(_response: object) -> None:
+        await worker.drain()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        event_hooks={"response": [settle]},
+    ) as c:
         yield c
     app.dependency_overrides.clear()
 
@@ -108,11 +120,12 @@ def new_key() -> str:
 
 
 async def balance(db: AsyncSession, vpa: str) -> int:
-    """Read a balance fresh from the database (not from this session's cache)."""
-    value = await db.scalar(
-        select(Account.balance_paise)
-        .where(Account.vpa == vpa)
-        .execution_options(populate_existing=True)
+    """Read a balance fresh from the database (not from this session's cache).
+    System accounts keep no cached balance, so theirs comes from the ledger."""
+    account = await db.scalar(
+        select(Account).where(Account.vpa == vpa).execution_options(populate_existing=True)
     )
-    assert value is not None
-    return value
+    assert account is not None
+    if account.kind == AccountKind.SYSTEM:
+        return await ledger_balance(db, account.id)
+    return account.balance_paise

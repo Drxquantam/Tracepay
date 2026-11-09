@@ -1,6 +1,6 @@
 """Simulated clock: anyone logged in can read it; only admins can move it."""
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.clock import Clock, get_clock
@@ -8,6 +8,7 @@ from app.db import get_db, get_sessionmaker
 from app.deps import get_current_user, require_admin
 from app.jobs import run_due_jobs, start_payments
 from app.schemas import ClockAdvance, ClockOut
+from app.worker import spawn
 
 router = APIRouter(tags=["clock"])
 
@@ -24,7 +25,6 @@ async def read_clock(db: AsyncSession = Depends(get_db), clock: Clock = Depends(
 @router.post("/admin/clock/advance", response_model=ClockOut, dependencies=[Depends(require_admin)])
 async def advance_clock(
     body: ClockAdvance,
-    background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     clock: Clock = Depends(get_clock),
     maker: async_sessionmaker[AsyncSession] = Depends(get_sessionmaker),
@@ -39,7 +39,7 @@ async def advance_clock(
     # and no wait for the background loop.
     result = await run_due_jobs(maker, clock)
     if result.payments_to_run:
-        background.add_task(start_payments, maker, clock, result.payments_to_run)
+        spawn(start_payments(maker, clock, result.payments_to_run))
     out = await _clock_out(db, clock)
     out.disputes_opened = result.disputes_opened
     return out

@@ -2,10 +2,11 @@
 // spending, and recent payments.
 
 import { motion } from "framer-motion";
-import { ArrowRight, Inbox, PlaneTakeoff, Scale, Send, ShieldCheck, Snowflake } from "lucide-react";
+import { ArrowRight, Inbox, PlaneTakeoff, Scale, Send, Snowflake } from "lucide-react";
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { HoldCard } from "../components/HoldCard";
+import Admin from "./Admin";
 import { PaymentRow } from "../components/PaymentRow";
 import { SpendChart } from "../components/SpendChart";
 import { AnimatedAmount, Button, Card, EmptyState, SectionTitle, Skeleton } from "../components/ui";
@@ -34,7 +35,7 @@ export default function Home() {
     refreshMe().catch(() => {});
   }, [payments.data, refreshMe]);
 
-  if (me?.role === "admin") return <AdminHome />;
+  if (me?.role === "admin") return <Admin />;
 
   const account = me?.accounts[0];
   const list = payments.data ?? [];
@@ -177,37 +178,6 @@ export default function Home() {
           )}
         </Card>
       </section>
-    </div>
-  );
-}
-
-function AdminHome() {
-  const integrity = useApi<{ ok: boolean; ledger_total_paise: number; suspense_balance_paise: number }>("/admin/ledger/integrity", 10000);
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold tracking-tight">Admin</h1>
-      <Card glow>
-        <div className="flex items-center gap-4">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-ok/15 text-ok">
-            <ShieldCheck className="h-6 w-6" aria-hidden />
-          </span>
-          <div>
-            <p className="font-semibold">Ledger integrity</p>
-            {integrity.data ? (
-              <p className="text-sm text-muted">
-                {integrity.data.ok ? "All checks pass" : "Check failed"} · ledger total{" "}
-                <span className="money">{formatINR(integrity.data.ledger_total_paise)}</span> · in flight{" "}
-                <span className="money">{formatINR(integrity.data.suspense_balance_paise)}</span>
-              </p>
-            ) : (
-              <Skeleton className="mt-1 h-4 w-56" />
-            )}
-          </div>
-        </div>
-      </Card>
-      <p className="text-sm text-muted">
-        Chaos controls and time travel are available through the API: see the interactive docs at <code>localhost:8000/docs</code>.
-      </p>
     </div>
   );
 }

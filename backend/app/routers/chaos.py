@@ -3,7 +3,7 @@ deadline sweep. SIMULATION ONLY."""
 
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -14,6 +14,7 @@ from app.jobs import run_due_jobs, start_payments
 from app.models import Bank
 from app.schemas import BankChaosOut, BankChaosUpdate, ResolveRequest
 from app.switch import ResolveError, refund, resolve_stuck
+from app.worker import spawn
 
 router = APIRouter(prefix="/admin", tags=["admin: chaos"], dependencies=[Depends(require_admin)])
 
@@ -79,12 +80,11 @@ async def retry_refund(
 
 @router.post("/deadlines/sweep")
 async def sweep_deadlines(
-    background: BackgroundTasks,
     maker: async_sessionmaker[AsyncSession] = Depends(get_sessionmaker),
     clock: Clock = Depends(get_clock),
 ) -> dict:
     """Run the time-based jobs now, instead of waiting for the background loop."""
     result = await run_due_jobs(maker, clock)
     if result.payments_to_run:
-        background.add_task(start_payments, maker, clock, result.payments_to_run)
+        spawn(start_payments(maker, clock, result.payments_to_run))
     return {"disputes_opened": result.disputes_opened, "holds_processed": result.holds_processed}

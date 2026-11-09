@@ -4,7 +4,7 @@ Guardian mode lowers risk but can't stop every coached scam: someone being coach
 talked into asking for approval, or into switching the rules off. The UI says so too.
 """
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
@@ -26,6 +26,7 @@ from app.schemas import (
 )
 from app.state_machine import PaymentState
 from app.switch import run_payment
+from app.worker import spawn
 
 router = APIRouter(prefix="/guardian", tags=["guardian"])
 
@@ -175,7 +176,6 @@ async def _act(
     db: AsyncSession,
     clock: Clock,
     maker: async_sessionmaker[AsyncSession],
-    background: BackgroundTasks,
 ) -> dict:
     now = await clock.now(db)
     try:
@@ -188,44 +188,41 @@ async def _act(
         raise HTTPException(e.status_code, e.message) from e
     await db.commit()
     if payment.state == PaymentState.BANK_DEBITED:
-        background.add_task(run_payment, maker, clock, payment.id)
+        spawn(run_payment(maker, clock, payment.id))
     return {"payment_id": str(payment.id), "state": payment.state}
 
 
 @router.post("/holds/{hold_id}/approve")
 async def approve(
     hold_id: int,
-    background: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     clock: Clock = Depends(get_clock),
     maker: async_sessionmaker[AsyncSession] = Depends(get_sessionmaker),
 ) -> dict:
-    return await _act("approve", hold_id, user, db, clock, maker, background)
+    return await _act("approve", hold_id, user, db, clock, maker)
 
 
 @router.post("/holds/{hold_id}/deny")
 async def deny(
     hold_id: int,
-    background: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     clock: Clock = Depends(get_clock),
     maker: async_sessionmaker[AsyncSession] = Depends(get_sessionmaker),
 ) -> dict:
-    return await _act("deny", hold_id, user, db, clock, maker, background)
+    return await _act("deny", hold_id, user, db, clock, maker)
 
 
 @router.post("/holds/{hold_id}/cancel")
 async def cancel_hold(
     hold_id: int,
-    background: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     clock: Clock = Depends(get_clock),
     maker: async_sessionmaker[AsyncSession] = Depends(get_sessionmaker),
 ) -> dict:
-    return await _act("cancel", hold_id, user, db, clock, maker, background)
+    return await _act("cancel", hold_id, user, db, clock, maker)
 
 
 async def _freeze(body: FreezeRequest, user: User, db: AsyncSession, clock: Clock, frozen: bool):  # type: ignore[no-untyped-def]

@@ -131,6 +131,9 @@ export default function Mandates() {
 
 function MandateCard({ m, onAction }: { m: Mandate; onAction: (m: Mandate, verb: "pause" | "resume" | "revoke") => void }) {
   const next = m.upcoming[0];
+  // A cycle already noticed (or retrying) shows when it will really be taken, which can be
+  // later than its due date: debits never run sooner than 24 h after the notice.
+  const pending = m.debits.find((d) => (d.status === "notified" || d.status === "retrying") && d.next_attempt_at);
   const firstPaid = m.upcoming.find((u) => !u.is_trial);
   const onTrial = m.trial_amount_paise !== null && m.trial_debits_left > 0;
   return (
@@ -157,7 +160,15 @@ function MandateCard({ m, onAction }: { m: Mandate; onAction: (m: Mandate, verb:
         </div>
         <div className="text-right">
           <p className="money text-xl font-extrabold">{formatINR(next?.amount_paise ?? m.amount_paise)}</p>
-          <p className="text-xs text-muted">{next ? `next on ${formatDate(next.due_at)}` : m.status === "paused" ? "paused" : "no more debits"}</p>
+          <p className="text-xs text-muted">
+            {pending
+              ? `debits ${formatDateTime(pending.next_attempt_at!)}`
+              : next
+                ? `next on ${formatDate(next.due_at)}`
+                : m.status === "paused"
+                  ? "paused"
+                  : "no more debits"}
+          </p>
         </div>
       </div>
 

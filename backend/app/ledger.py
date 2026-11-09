@@ -6,8 +6,16 @@ Rules:
    transaction sums to zero, and the whole ledger always sums to zero.
 2. Rows are append-only. A mistake is fixed with a new, opposite transaction (a reversal),
    never by editing history. That's what makes the ledger auditable.
-3. The ledger rows and the cached `accounts.balance_paise` change in the *same* database
-   transaction, on rows locked with SELECT ... FOR UPDATE, so they can never disagree.
+3. User and merchant accounts keep a cached `accounts.balance_paise`, changed in the
+   *same* database transaction as the ledger rows, on rows locked with
+   SELECT ... FOR NO KEY UPDATE, so the two can never disagree.
+4. System accounts (suspense, opening balances) keep NO cached balance: their balance is
+   just the sum of their ledger rows. Every payment touches the suspense account, so a
+   cached balance there would be one row that every payment must lock and update: a
+   "hot row" that makes payments queue up one at a time. The k6 load test measured
+   exactly that (about 10 payments/s). Appending ledger rows needs no shared lock.
+   This is safe because nothing ever has to check a system account's balance before
+   moving money; only real customers can't go below zero.
 
 Money in flight: when a payer's bank debits them, the money moves to the platform's
 settlement *suspense* account. It moves out of suspense when the payee is credited, or
@@ -22,7 +30,7 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Account, LedgerEntry, Payment
+from app.models import Account, AccountKind, LedgerEntry, Payment
 from app.state_machine import MONEY_IN_FLIGHT
 
 OPENING_BALANCE_VPA = "opening.balance@tracepay"
@@ -79,8 +87,9 @@ def post_transfer(
 ) -> uuid.UUID:
     """Write one balanced transaction moving `amount_paise` between two accounts.
 
-    Both accounts must already be locked by `lock_accounts` in the current transaction.
-    Nothing is committed here: the caller commits once, together with the payment's
+    Every non-system account involved must already be locked by `lock_accounts` in the
+    current transaction (system accounts are never locked: see rule 4). Nothing is
+    committed here: the caller commits once, together with the payment's
     state change, so either all of it happens or none of it does.
     """
     if amount_paise <= 0:
@@ -107,9 +116,20 @@ def post_transfer(
         ]
     )
     # Safe read-modify-write: the rows are locked, so nobody else can change them meanwhile.
-    from_account.balance_paise -= amount_paise
-    to_account.balance_paise += amount_paise
+    if from_account.kind != AccountKind.SYSTEM:
+        from_account.balance_paise -= amount_paise
+    if to_account.kind != AccountKind.SYSTEM:
+        to_account.balance_paise += amount_paise
     return txn_id
+
+
+async def ledger_balance(db: AsyncSession, account_id: int) -> int:
+    """An account's balance computed from the ledger (the only balance system accounts
+    have)."""
+    total = await db.scalar(
+        select(func.sum(LedgerEntry.amount_paise)).where(LedgerEntry.account_id == account_id)
+    )
+    return int(total or 0)
 
 
 async def integrity_report(db: AsyncSession) -> dict:
@@ -132,14 +152,14 @@ async def integrity_report(db: AsyncSession) -> dict:
         await db.execute(
             select(Account.vpa, Account.balance_paise, ledger_sum)
             .outerjoin(LedgerEntry, LedgerEntry.account_id == Account.id)
+            .where(Account.kind != AccountKind.SYSTEM)  # system accounts have no cache
             .group_by(Account.id)
             .having(Account.balance_paise != ledger_sum)
         )
     ).all()
 
-    suspense_balance = (
-        await db.scalar(select(Account.balance_paise).where(Account.vpa == SUSPENSE_VPA)) or 0
-    )
+    suspense = await db.scalar(select(Account).where(Account.vpa == SUSPENSE_VPA))
+    suspense_balance = await ledger_balance(db, suspense.id) if suspense else 0
     in_flight_total = int(
         await db.scalar(
             select(func.sum(Payment.amount_paise)).where(Payment.state.in_(list(MONEY_IN_FLIGHT)))
@@ -159,7 +179,7 @@ async def integrity_report(db: AsyncSession) -> dict:
         "ledger_total_paise": total,
         # 2. ...and inside every single transaction.
         "unbalanced_transactions": [str(t) for t in unbalanced_txns],
-        # 3. Each cached balance equals the sum of that account's ledger rows.
+        # 3. Each cached (customer) balance equals the sum of that account's ledger rows.
         "balance_mismatches": [
             {"vpa": vpa, "cached_paise": cached, "ledger_paise": int(ledger)}
             for vpa, cached, ledger in mismatches
