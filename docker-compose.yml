@@ -1,0 +1,48 @@
+# TracePay — SIMULATION ONLY. Fake money, fake banks, mock UPI switch.
+# `docker compose up` starts Postgres, runs migrations + seed, then serves the API and web app.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tracepay
+      POSTGRES_PASSWORD: tracepay
+      POSTGRES_DB: tracepay
+    ports:
+      - "5433:5432" # 5433 on the host so it won't clash with a locally installed Postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracepay"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://tracepay:tracepay@db:5432/tracepay
+      TEST_DATABASE_URL: postgresql+asyncpg://tracepay:tracepay@db:5432/tracepay_test
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me}
+      CORS_ORIGINS: http://localhost:${WEB_PORT:-5173}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app # live reload during development
+
+  web:
+    build: ./frontend
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "${WEB_PORT:-5173}:5173" # set WEB_PORT in .env if 5173 is taken on your machine
+    depends_on:
+      - api
+    volumes:
+      - ./frontend/src:/app/src
+
+volumes:
+  pgdata:
