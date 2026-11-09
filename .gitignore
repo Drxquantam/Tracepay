@@ -9,3 +9,5 @@ node_modules/
 dist/
 .coverage
 *.tsbuildinfo
+# k6 output: its summary includes the login tokens setup() used
+loadtest/results/
