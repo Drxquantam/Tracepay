@@ -13,6 +13,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -65,6 +66,10 @@ class Bank(Base):
     name: Mapped[str] = mapped_column(String(120))
     profile: Mapped[str] = mapped_column(String(20), default=BankProfile.RELIABLE)
     is_down: Mapped[bool] = mapped_column(Boolean, default=False)  # toggled by chaos controls
+    # A fault (see app/faults.py) applied to every payment this bank receives; None = healthy.
+    fault: Mapped[str | None] = mapped_column(String(30))
+    # Normal latency (real seconds) before this bank confirms a credit. The flaky bank is slow.
+    response_delay_seconds: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
 
 
 class Account(Base):
@@ -136,6 +141,8 @@ class Payment(Base):
     state: Mapped[str] = mapped_column(String(32), index=True)
     note: Mapped[str | None] = mapped_column(String(200))
     failure_reason: Mapped[str | None] = mapped_column(String(300))  # plain-language reason
+    # Fault chosen for this one payment (demo / chaos testing). Overrides the bank's fault.
+    injected_fault: Mapped[str | None] = mapped_column(String(30))
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # simulated time
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # simulated time
@@ -155,6 +162,9 @@ class PaymentEvent(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     payment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("payments.id"), index=True)
+    # "transition" = a state change; "note" = something happened but the state didn't change
+    # (e.g. "no reply from the payee's bank"); "dispute" = deadline missed, dispute opened.
+    kind: Mapped[str] = mapped_column(String(20), default="transition", server_default="transition")
     from_state: Mapped[str | None] = mapped_column(String(32))  # None for the first event
     to_state: Mapped[str] = mapped_column(String(32))
     reason: Mapped[str | None] = mapped_column(String(300))
@@ -164,6 +174,51 @@ class PaymentEvent(Base):
     )  # real wall-clock time, useful when debugging time-travel demos
 
     payment: Mapped[Payment] = relationship(back_populates="events")
+
+
+class Dispute(Base):
+    """Opened automatically when a payment with money in flight misses its deadline.
+
+    The rule's numbers are *copied* onto the dispute when it opens. If the rules file changes
+    later, an existing dispute keeps the terms that applied when it was opened.
+    """
+
+    __tablename__ = "disputes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # unique: one payment can never get two disputes, even if two sweeps run at once.
+    payment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("payments.id"), unique=True)
+    rule_code: Mapped[str] = mapped_column(String(40))
+    tat_days: Mapped[int] = mapped_column(Integer)
+    compensation_paise_per_day: Mapped[int] = mapped_column(BigInteger)
+    deadline_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # simulated time
+    # Set when the money finally lands or comes back; compensation stops growing then.
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The payer's bank owes the compensation (not the merchant or the person paid).
+    owed_by_bank_id: Mapped[int] = mapped_column(ForeignKey("banks.id"))
+
+    payment: Mapped[Payment] = relationship()
+    owed_by_bank: Mapped[Bank] = relationship()
+    steps: Mapped[list["DisputeStep"]] = relationship(
+        back_populates="dispute", order_by="DisputeStep.position"
+    )
+
+
+class DisputeStep(Base):
+    """One rung of the escalation ladder: the app, then the bank, then the RBI ombudsman."""
+
+    __tablename__ = "dispute_steps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    dispute_id: Mapped[int] = mapped_column(ForeignKey("disputes.id"), index=True)
+    step: Mapped[str] = mapped_column(String(20))  # "app" | "bank" | "ombudsman"
+    position: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str] = mapped_column(String(400))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    dispute: Mapped[Dispute] = relationship(back_populates="steps")
 
 
 class IdempotencyKey(Base):

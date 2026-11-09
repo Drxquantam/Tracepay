@@ -6,6 +6,8 @@
     fail_payment     … → failed → reversal_pending   (if money had left the payer)
     complete_reversal  reversal_pending → reversed   (suspense → payer)
 
+The mock UPI switch (switch.py) decides *when* each step runs and injects faults.
+
 The functions don't commit; their caller does. That way the state change, its event row
 and its ledger rows always commit together, or not at all.
 
@@ -19,15 +21,16 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clock import Clock
+from app.disputes import mark_resolved
 from app.ledger import SUSPENSE_VPA, get_system_account, lock_accounts, post_transfer
-from app.models import Account, AccountKind, Payment
+from app.models import Account, AccountKind, Bank, Payment
 from app.rules import UPI_MAX_PER_TXN_PAISE
 from app.state_machine import (
     MONEY_IN_FLIGHT,
     PaymentState,
+    note,
     record_created,
     transition,
 )
@@ -57,6 +60,7 @@ async def accept_payment(
     amount_paise: int,
     note: str | None,
     at: datetime,
+    fault: str | None = None,
 ) -> Payment:
     """Create a payment and, if the payer can afford it, debit them.
 
@@ -78,9 +82,16 @@ async def accept_payment(
         raise PaymentError(400, "You can't pay yourself")
 
     suspense = await get_system_account(db, SUSPENSE_VPA)
+    payer_bank = await db.get(Bank, payer.bank_id, populate_existing=True)
+    assert payer_bank is not None
+
     # The key line for concurrency safety: lock the payer's row *before* reading the
     # balance. A second payment from the same account waits here until we commit, then
     # sees the reduced balance.
+    #
+    # Plain reads (like the bank lookup above) happen *before* this line: every payment
+    # locks the suspense row, so the less work done while holding it, the better the
+    # throughput. (See lock_accounts for why the lock mode matters too.)
     locked = await lock_accounts(db, [payer.id, suspense.id])
     payer, suspense = locked[payer.id], locked[suspense.id]
 
@@ -92,6 +103,7 @@ async def accept_payment(
         amount_paise=amount_paise,
         note=note,
         created_by_user_id=payer_user_id,
+        injected_fault=fault,
     )
     db.add(payment)
     record_created(db, payment, at)
@@ -100,7 +112,12 @@ async def accept_payment(
     # deliberately has none).
     await db.flush()
 
-    if payer.is_frozen:
+    if payer_bank.is_down:
+        # The payer's own bank is down, so nothing can be debited: a clean decline.
+        _decline(
+            db, payment, at, f"{payer_bank.name} is not responding right now. No money was taken."
+        )
+    elif payer.is_frozen:
         _decline(db, payment, at, "Your account is frozen, so outgoing payments are paused")
     elif payer.balance_paise < amount_paise:
         _decline(db, payment, at, "Not enough balance in your account")
@@ -131,7 +148,9 @@ async def lock_payment(db: AsyncSession, payment_id: uuid.UUID) -> Payment:
     payment = await db.scalar(
         select(Payment)
         .where(Payment.id == payment_id)
-        .with_for_update()
+        # NO KEY UPDATE, as for accounts: events and ledger rows referencing this payment
+        # can still be inserted by our own and other transactions' foreign-key checks.
+        .with_for_update(key_share=True)
         .execution_options(populate_existing=True)
     )
     if payment is None:
@@ -147,11 +166,13 @@ async def send_to_switch(db: AsyncSession, payment_id: uuid.UUID, at: datetime) 
 
 async def credit_payee(db: AsyncSession, payment_id: uuid.UUID, at: datetime) -> Payment:
     payment = await lock_payment(db, payment_id)
-    suspense = await get_system_account(db, SUSPENSE_VPA)
-    locked = await lock_accounts(db, [suspense.id, payment.payee_account_id])
     # Transition first: it raises if the payment isn't in_switch, so a payee can never be
     # credited twice for one payment.
     transition(db, payment, PaymentState.CREDITED, at, "Credited to the payee's account")
+    await mark_resolved(db, payment, at)
+    # Lock the hot suspense row last, after all the other work, to hold it briefly.
+    suspense = await get_system_account(db, SUSPENSE_VPA)
+    locked = await lock_accounts(db, [suspense.id, payment.payee_account_id])
     post_transfer(
         db,
         from_account=locked[suspense.id],
@@ -183,11 +204,13 @@ async def fail_payment(
 
 async def complete_reversal(db: AsyncSession, payment_id: uuid.UUID, at: datetime) -> Payment:
     payment = await lock_payment(db, payment_id)
-    suspense = await get_system_account(db, SUSPENSE_VPA)
-    locked = await lock_accounts(db, [suspense.id, payment.payer_account_id])
     # Transition first: it raises if the payment isn't reversal_pending, so a refund can
     # never be paid out twice.
     transition(db, payment, PaymentState.REVERSED, at, "Money returned to your account")
+    await mark_resolved(db, payment, at)
+    # Lock the hot suspense row last, after all the other work, to hold it briefly.
+    suspense = await get_system_account(db, SUSPENSE_VPA)
+    locked = await lock_accounts(db, [suspense.id, payment.payer_account_id])
     post_transfer(
         db,
         from_account=locked[suspense.id],
@@ -200,19 +223,13 @@ async def complete_reversal(db: AsyncSession, payment_id: uuid.UUID, at: datetim
     return payment
 
 
-async def process_payment(
-    maker: async_sessionmaker[AsyncSession], clock: Clock, payment_id: uuid.UUID
-) -> None:
-    """Carry a debited payment through the switch to the payee (Phase 2: happy path only).
-
-    Runs after the HTTP response is sent, like a real PSP. If the process died between
-    steps, the payment would sit in `bank_debited` or `in_switch` with the money safe in
-    suspense; Phase 3 adds the mock bank and switch (with fault injection) and the
-    deadline checks that catch exactly that case.
-    """
-    async with maker() as db:
-        await send_to_switch(db, payment_id, await clock.now(db))
-        await db.commit()
-    async with maker() as db:
-        await credit_payee(db, payment_id, await clock.now(db))
-        await db.commit()
+async def handle_credit_confirmation(
+    db: AsyncSession, payment_id: uuid.UUID, at: datetime, bank_name: str
+) -> Payment:
+    """The payee's bank says "credited". Banks can send this callback more than once
+    (retries, network glitches), so a repeat must be harmless: log it and move no money."""
+    payment = await lock_payment(db, payment_id)
+    if payment.state == PaymentState.CREDITED:
+        note(db, payment, at, f"Duplicate confirmation from {bank_name} ignored. No money moved.")
+        return payment
+    return await credit_payee(db, payment_id, at)

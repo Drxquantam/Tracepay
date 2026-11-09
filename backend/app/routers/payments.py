@@ -11,10 +11,18 @@ from app.clock import Clock, get_clock
 from app.db import get_db, get_sessionmaker
 from app.deps import get_current_user
 from app.idempotency import claim_key, hash_request, save_response
-from app.models import Account, Payment, User, UserRole
-from app.payments import PaymentError, accept_payment, process_payment
-from app.schemas import PaymentCreate, PaymentDetailOut, PaymentEventOut, PaymentOut
+from app.models import Account, Dispute, Payment, User, UserRole
+from app.payments import PaymentError, accept_payment
+from app.schemas import (
+    PaymentCreate,
+    PaymentDetailOut,
+    PaymentEventOut,
+    PaymentOut,
+    TrackerOut,
+)
 from app.state_machine import PaymentState
+from app.switch import run_payment
+from app.tracker import tracker_view
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -78,6 +86,7 @@ async def create_payment(
             amount_paise=body.amount_paise,
             note=body.note,
             at=await clock.now(db),
+            fault=body.simulate_fault,
         )
     except PaymentError as e:
         # Rolling back also releases the idempotency key, so the client can fix the
@@ -94,7 +103,7 @@ async def create_payment(
     # The rest of the journey (switch, credit) happens after we've answered the client,
     # the way a real PSP replies "accepted" and settles asynchronously.
     if payment.state == PaymentState.BANK_DEBITED:
-        background.add_task(process_payment, maker, clock, payment.id)
+        background.add_task(run_payment, maker, clock, payment.id)
     return out
 
 
@@ -121,16 +130,16 @@ async def list_my_payments(
     return [payment_out(p) for p in payments]
 
 
-@router.get("/{payment_id}", response_model=PaymentDetailOut)
-async def get_payment(
-    payment_id: uuid.UUID,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> PaymentDetailOut:
+async def load_visible_payment(db: AsyncSession, payment_id: uuid.UUID, user: User) -> Payment:
+    """Load a payment with its accounts, banks and events, if this user may see it."""
     payment = await db.scalar(
         select(Payment)
         .where(Payment.id == payment_id)
-        .options(*_with_accounts(), selectinload(Payment.events))
+        .options(
+            selectinload(Payment.payer_account).selectinload(Account.bank),
+            selectinload(Payment.payee_account).selectinload(Account.bank),
+            selectinload(Payment.events),
+        )
     )
     involved = payment is not None and user.id in (
         payment.payer_account.user_id,
@@ -139,7 +148,44 @@ async def get_payment(
     if payment is None or not (involved or user.role == UserRole.ADMIN):
         # 404 rather than 403, so nobody can probe which payment ids exist.
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found")
+    return payment
+
+
+def detail_out(payment: Payment) -> PaymentDetailOut:
     return PaymentDetailOut(
         **payment_out(payment).model_dump(),
         events=[PaymentEventOut.model_validate(e) for e in payment.events],
     )
+
+
+@router.get("/{payment_id}", response_model=PaymentDetailOut)
+async def get_payment(
+    payment_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PaymentDetailOut:
+    return detail_out(await load_visible_payment(db, payment_id, user))
+
+
+@router.get("/{payment_id}/tracker", response_model=TrackerOut)
+async def track_payment(
+    payment_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> TrackerOut:
+    """Money in Flight: where the money is now, the deadline countdown, and any dispute."""
+    payment = await load_visible_payment(db, payment_id, user)
+    dispute = await db.scalar(
+        select(Dispute)
+        .where(Dispute.payment_id == payment.id)
+        # Dispute.payment resolves to the payment object loaded above (same session),
+        # which already has its accounts and banks.
+        .options(
+            selectinload(Dispute.steps),
+            selectinload(Dispute.owed_by_bank),
+            selectinload(Dispute.payment),
+        )
+    )
+    view = tracker_view(payment, dispute, await clock.now(db))
+    return TrackerOut(payment=detail_out(payment), **view)

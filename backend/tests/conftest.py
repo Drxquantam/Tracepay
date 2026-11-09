@@ -10,6 +10,7 @@ import pytest
 
 # Cheap password hashing for tests; must be set before app.config is imported.
 os.environ.setdefault("BCRYPT_ROUNDS", "4")
+os.environ.setdefault("RUN_BACKGROUND_JOBS", "false")
 
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, text

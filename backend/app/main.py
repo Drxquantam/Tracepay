@@ -1,15 +1,51 @@
 """TracePay API entry point. SIMULATION ONLY: fake money, fake banks, mock UPI switch."""
 
+import asyncio
+import contextlib
+import logging
+from collections.abc import AsyncIterator
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.clock import get_clock
 from app.config import settings
-from app.routers import admin, auth, clock, health, payments
+from app.db import SessionLocal
+from app.disputes import open_overdue_disputes
+from app.routers import admin, auth, chaos, clock, disputes, health, payments
+from app.rules import DEADLINE_SWEEP_INTERVAL_SECONDS
+
+log = logging.getLogger("tracepay")
+
+
+async def deadline_sweep_loop() -> None:
+    """Every few seconds, open disputes for payments stuck past their deadline. Payments
+    stranded by a server restart mid-flight get caught here too."""
+    while True:
+        await asyncio.sleep(DEADLINE_SWEEP_INTERVAL_SECONDS)
+        try:
+            async with SessionLocal() as db:
+                opened = await open_overdue_disputes(db, await get_clock().now(db))
+                await db.commit()
+            if opened:
+                log.info("Deadline sweep opened %d dispute(s)", len(opened))
+        except Exception:  # keep the loop alive; one bad run shouldn't stop future checks
+            log.exception("Deadline sweep failed")
+
+
+@contextlib.asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    task = asyncio.create_task(deadline_sweep_loop()) if settings.run_background_jobs else None
+    yield
+    if task:
+        task.cancel()
+
 
 app = FastAPI(
     title="TracePay API (simulation only)",
     description="Simulated UPI-style payments. No real money, banks or NPCI integration.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -20,8 +56,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health.router)
-app.include_router(auth.router)
-app.include_router(payments.router)
-app.include_router(clock.router)
-app.include_router(admin.router)
+for module in (health, auth, payments, disputes, clock, admin, chaos):
+    app.include_router(module.router)

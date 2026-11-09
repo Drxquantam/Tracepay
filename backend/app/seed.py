@@ -34,9 +34,21 @@ async def seed_demo_data(db: AsyncSession) -> bool:
 
     # Two mock banks: one dependable, one that the chaos controls will love.
     suraksha = Bank(
-        code="SURAKSHA", name="Suraksha Bank", profile=BankProfile.RELIABLE, is_down=False
+        code="SURAKSHA",
+        name="Suraksha Bank",
+        profile=BankProfile.RELIABLE,
+        is_down=False,
+        response_delay_seconds=0.0,
     )
-    jhatpat = Bank(code="JHATPAT", name="Jhatpat Bank", profile=BankProfile.FLAKY, is_down=False)
+    # The flaky bank is also slow: it takes 2 real seconds to confirm a credit, so the flight
+    # path animation has something to show even without chaos.
+    jhatpat = Bank(
+        code="JHATPAT",
+        name="Jhatpat Bank",
+        profile=BankProfile.FLAKY,
+        is_down=False,
+        response_delay_seconds=2.0,
+    )
     db.add_all([suraksha, jhatpat])
 
     pw = hash_password(DEMO_PASSWORD)

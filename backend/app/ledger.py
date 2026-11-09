@@ -30,7 +30,7 @@ SUSPENSE_VPA = "settlement.suspense@tracepay"
 
 
 async def lock_accounts(db: AsyncSession, account_ids: Iterable[int]) -> dict[int, Account]:
-    """Lock account rows with SELECT ... FOR UPDATE and return them by id.
+    """Lock account rows and return them by id.
 
     - Until our transaction commits, any other transaction trying to lock the same rows
       waits. So two payments from one account run one after the other, and the second
@@ -38,6 +38,11 @@ async def lock_accounts(db: AsyncSession, account_ids: Iterable[int]) -> dict[in
     - Rows are always locked in ascending id order. If transaction A locked 1-then-2
       while B locked 2-then-1, each could wait for the other forever (a deadlock).
       One global order makes that impossible.
+    - The lock is FOR NO KEY UPDATE, not FOR UPDATE. We only change `balance_paise`, never
+      the row's key. FOR UPDATE would also block the KEY SHARE locks Postgres takes when
+      *another* transaction inserts a row pointing at this account (a payment, a ledger
+      entry); that clash deadlocked the 100-parallel-payments test. FOR NO KEY UPDATE still
+      blocks other balance changes, but lets those foreign-key checks through.
     - populate_existing re-reads the row from the database even if this session already
       holds a copy, so we never check a balance against stale data.
     """
@@ -46,7 +51,7 @@ async def lock_accounts(db: AsyncSession, account_ids: Iterable[int]) -> dict[in
         select(Account)
         .where(Account.id.in_(ids))
         .order_by(Account.id)
-        .with_for_update()
+        .with_for_update(key_share=True)  # renders FOR NO KEY UPDATE on Postgres
         .execution_options(populate_existing=True)
     )
     accounts = {a.id: a for a in rows}

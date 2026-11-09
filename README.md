@@ -8,8 +8,8 @@ to my money after something goes wrong?* It tracks each payment through its stag
 when a bank misses its turnaround deadline. The bank then owes compensation, and TracePay
 works out how much.
 
-Status: **Phase 2 of 7** (ledger, idempotent payments, state machine, locking, simulated
-clock). The full README (architecture, design decisions, rules table, limitations) is written
+Status: **Phase 3 of 7** (mock bank and switch with fault injection, Money in Flight
+tracker, automatic disputes and compensation). Backend only so far; the UI starts in Phase 4. The full README (architecture, design decisions, rules table, limitations) is written
 in Phase 7.
 
 ## Run it
@@ -46,14 +46,53 @@ machine, set `WEB_PORT` (see `.env.example`).
 | GET | `/auth/me` | user | profile and accounts |
 | POST | `/payments` | user | pay a UPI ID. **Requires an `Idempotency-Key` header** |
 | GET | `/payments`, `/payments/{id}` | user | history; one payment with its full event timeline |
+| GET | `/payments/{id}/tracker` | user | **Money in Flight**: where the money is, deadline countdown, dispute |
+| GET | `/disputes`, `/disputes/{id}` | payer | disputes with compensation owed and escalation steps |
+| GET | `/disputes/{id}/claim` | payer | ready-to-send claim summary (plain text) |
+| POST | `/disputes/{id}/steps/{step}/complete` | payer | tick off `bank` / `ombudsman` escalation |
 | GET | `/clock` | user | current simulated time |
-| POST | `/admin/clock/advance`, `/admin/clock/reset` | admin | time travel |
+| POST | `/admin/clock/advance`, `/admin/clock/reset` | admin | time travel (also runs the deadline check) |
 | GET | `/admin/ledger/integrity` | admin | proves the ledger balances |
+| GET/PUT | `/admin/chaos/banks[/{code}]` | admin | bank down / fault / latency |
+| POST | `/admin/chaos/reset` | admin | all banks healthy again |
+| POST | `/admin/payments/{id}/resolve` | admin | "the bank finally acts": `credit` or `reverse` |
+| POST | `/admin/deadlines/sweep` | admin | run the overdue check now |
 
 ```bash
 # Example: pay Ravi ₹250 (amounts are in paise)
 curl -X POST localhost:8000/payments -H "Authorization: Bearer $TOKEN"   -H "Idempotency-Key: $(uuidgen)" -H "Content-Type: application/json"   -d '{"payee_vpa": "ravistore@suraksha", "amount_paise": 25000}'
 ```
+
+## Fault injection (simulation only)
+
+Set a fault for **one payment** (`"simulate_fault"` in the pay request) or for **every
+payment a bank receives** (`PUT /admin/chaos/banks/{code}`):
+
+| Fault | What the mock switch does | Outcome |
+|---|---|---|
+| `timeout` | payee's bank never answers in time | failed → refunded (or refund waits if the payer's bank is down) |
+| `bank_down` / bank `is_down` | payee's bank unreachable when credit is due | stuck in `in_switch`, money in suspense |
+| `debited_not_credited` | payee's bank never confirms | stuck in `in_switch`, money in suspense |
+| `duplicate_callback` | payee's bank confirms twice | credited once; the second confirmation is logged and ignored |
+| `slow_response` | payee's bank waits 8 real seconds | credited late (time to kill the bank mid-flight in a demo) |
+
+If the *payer's* bank is down, the payment is declined before any money moves.
+A stuck payment is never auto-"fixed": once its deadline passes, a dispute opens by itself.
+
+## Rules modelled on (all in [app/rules.py](backend/app/rules.py))
+
+Modelled on RBI rules: verify against the current circular before quoting.
+
+| Rule | Value used | Where |
+|---|---|---|
+| UPI P2P: debited, not credited | reverse by T+1, then ₹100/day | `P2P_DEBITED_NOT_CREDITED` |
+| UPI merchant: debited, no confirmation | reverse by T+5, then ₹100/day | `MERCHANT_NOT_CONFIRMED` |
+| Ombudsman | after 30 days with no resolution from the bank | `OMBUDSMAN_WAIT_DAYS` |
+| Per-payment UPI limit | ₹1,00,000 | `UPI_MAX_PER_TXN_PAISE` |
+
+"T" is the calendar day in IST. The deadline is the end of day T+N, and a part day of delay
+counts as a full day. **Compensation is owed by the payer's bank, not by the merchant.**
+The app only computes it; nothing pays it out (a limitation).
 
 ## How a payment moves (short version; full design notes in Phase 7)
 
@@ -80,6 +119,13 @@ stateDiagram-v2
   deadlocks. A DB `CHECK` constraint is the backstop against negative balances.
 - **Money in flight** sits in a system *suspense* account between debit and credit, so the
   integrity check can prove every paisa in flight belongs to a specific payment.
+- **Lock mode** is `FOR NO KEY UPDATE`, not `FOR UPDATE`: we only change balances, and plain
+  `FOR UPDATE` also blocks the `KEY SHARE` locks Postgres takes for foreign-key checks when
+  other transactions insert payments or ledger rows pointing at the account. That clash
+  deadlocked the 100-parallel-payments test during development.
+- **Disputes** ([app/disputes.py](backend/app/disputes.py)): a background loop (every 15 s)
+  and every time-travel jump look for money in flight past its deadline, using
+  `FOR UPDATE SKIP LOCKED` plus a unique constraint so two sweeps can't open two disputes.
 - **Simulated clock** ([app/clock.py](backend/app/clock.py)): real time plus an offset stored in
   the DB; everything that stamps a time asks this clock.
 

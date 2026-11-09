@@ -94,3 +94,19 @@ def transition(
     )
     payment.state = to_state
     payment.updated_at = at
+
+
+def note(db: AsyncSession, payment: Payment, at: datetime, reason: str, kind: str = "note") -> None:
+    """Log something that happened *without* changing the state, e.g. "no reply from the
+    payee's bank". A stuck payment's timeline then shows the true story, not just its last
+    state."""
+    db.add(
+        PaymentEvent(
+            payment_id=payment.id,
+            kind=kind,
+            from_state=payment.state,
+            to_state=payment.state,
+            reason=reason,
+            occurred_at=at,
+        )
+    )

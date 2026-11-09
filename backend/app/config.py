@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     # the test suite sets 4 so its many logins don't take minutes.
     bcrypt_rounds: int = 12
 
+    # The periodic deadline sweep. Tests turn it off and call the sweep directly.
+    run_background_jobs: bool = True
+
     cors_origins: str = "http://localhost:5173"  # comma-separated
 
 
